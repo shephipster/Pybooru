@@ -5,5 +5,8 @@ urlpatterns = [
     path("", views.home, name="home"),
     path("auth/", views.authorize, name="auth"),
     path("booru/", views.booru, name="booru"),
-    path("booru/search", views.search, name="search")
+    path("booru/search", views.search, name="search"),
+    path("thumbnail/<id>", views.thumbnail, name="thumbnail"),
+    path("view/<id>", views.view, name="view"),
+    path("image/<id>", views.image, name="image")
 ]

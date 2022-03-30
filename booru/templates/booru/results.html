@@ -7,7 +7,7 @@
     <head>
         <meta charset="utf-8">
         <meta http-equiv="X-UA-Compatible" content="IE=edge">
-        <title>Results</title>
+        <title>Shep-booru</title>
         <meta name="description" content="">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <link rel="stylesheet" href="">
@@ -16,10 +16,23 @@
         <!--[if lt IE 7]>
             <p class="browsehappy">You are using an <strong>outdated</strong> browser. Please <a href="#">upgrade your browser</a> to improve your experience.</p>
         <![endif]-->
-        Found {{ total }} file(s) with the tags {{tags}}
-        {% for id in ids %}
-            
-        {% endfor %}
+        Found <b>{{ total }}</b> file(s) with the tags: <b>{{tagString}}</b>
+        <hr>
+        <div>
+            <h1 class="text-4xl mb-4 font-bold">{{ title }}</h1>
+            <div class="col-md-3 col-sm-6">
+              {% for id in page_obj %}
+                <a href="/view/{{id}}" class="bordered card">
+                  <img 
+                      src="/thumbnail/{{id}}"
+                    >
+                </a>
+              {% endfor %}
+            </div>
+        
+          </div>
+        <hr>
+        {% include "booru/pagination.html" with tagString=tags %}
         <script src="" async defer></script>
     </body>
 </html>

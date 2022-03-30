@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<!--[if lt IE 7]>      <html class="no-js lt-ie9 lt-ie8 lt-ie7"> <![endif]-->
+<!--[if IE 7]>         <html class="no-js lt-ie9 lt-ie8"> <![endif]-->
+<!--[if IE 8]>         <html class="no-js lt-ie9"> <![endif]-->
+<!--[if gt IE 8]>      <html class="no-js"> <!--<![endif]-->
+<html>
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <title>ShepBooru:{{id}}</title>
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+    </head>
+    <body>
+        <!--[if lt IE 7]>
+            <p class="browsehappy">You are using an <strong>outdated</strong> browser. Please <a href="#">upgrade your browser</a> to improve your experience.</p>
+        <![endif]-->
+        <style>
+            html, body {
+                width: 100%;
+                height: 100%;
+                margin: 0;
+                padding: 0;
+            }
+            .display {
+                width: 80%;
+                height: 80%;
+                float: left;
+            }
+            .tags{
+                width:10%;
+                height:100%;
+                float: left;
+                text-align:center;
+            }
+            img {
+                width: 100%;
+                height: 100%;
+                object-fit: contain;
+            }
+        </style>
+        <div class="tags">
+            <h2>Tags</h2>
+            {% for tag in tags %}
+            <a href="../booru/search?tags={{tag}}">{{tag}}</a><br>
+            {% endfor %}
+        </div>
+        <div class="display">
+            <img src="/image/{{id}}">
+        </div>
+        
+        <script src="" async defer></script>
+    </body>
+</html>

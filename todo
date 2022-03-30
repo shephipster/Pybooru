@@ -1,7 +1,8 @@
 Completed: Take tags and get id(s) of all files that have those tags
+Paginated results
 
 TODO:
-    get the thumbnails (pagination going to be useful)
+    get the thumbnails for the files on the page OR get the uri/path from hydrus
     display thumbnails
     make each image a link
     /booru/file/id -> The full file from hydrus
