@@ -1,0 +1,7 @@
+Completed: Take tags and get id(s) of all files that have those tags
+
+TODO:
+    get the thumbnails (pagination going to be useful)
+    display thumbnails
+    make each image a link
+    /booru/file/id -> The full file from hydrus
