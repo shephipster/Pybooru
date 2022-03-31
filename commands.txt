@@ -1,4 +1,15 @@
 If you want to run this in a docker image, do the following commands in this order
-1) rename .env to pybooru.env, make sure you adjust the values from the default template values included
-2) docker-compose build
-3) docker-compose up -d
+
+Docker:
+  1) rename .env to pybooru.env, make sure you adjust the values from the default template values included
+  2) docker-compose build
+  3) docker-compose up -d
+ As is:
+  1) adjust .env file values
+  2) python manage.py runserver 0.0.0.0:8000
+  
+If you only care about connecting on a local network, say to your pc from your phone on the same router, then you're golden. Just go to the local ip of your machine in your web browser (if you followed exactly it'd be something like 192.168.1.20:8000) and you should see the initial login page.
+
+You will need to port forward if you want people outside of your local network to connect. What I personally did was use NoIP to assign myself a domain, then
+forwarded all traffic from port 80 to my Docker image's port 8000. This made it so people only had to enter the domain name without needing to include a :8000 at the end.
+[mywebsite.ddns.net]<->[my.public.ip]:80<->[my.local.machine]:8000<->[docker.image]:8000
