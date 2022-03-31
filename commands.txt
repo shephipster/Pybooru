@@ -1,0 +1,4 @@
+If you want to run this in a docker image, do the following commands in this order
+1) rename .env to pybooru.env, make sure you adjust the values from the default template values included
+2) docker-compose build
+3) docker-compose up -d

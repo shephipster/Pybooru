@@ -3,6 +3,9 @@
 <!--[if IE 7]>         <html class="no-js lt-ie9 lt-ie8"> <![endif]-->
 <!--[if IE 8]>         <html class="no-js lt-ie9"> <![endif]-->
 <!--[if gt IE 8]>      <html class="no-js"> <!--<![endif]-->
+<style>
+  
+</style>
 <html>
     <head>
         <meta charset="utf-8">
@@ -10,7 +13,6 @@
         <title>Shep-booru</title>
         <meta name="description" content="">
         <meta name="viewport" content="width=device-width, initial-scale=1">
-        <link rel="stylesheet" href="">
     </head>
     <body>
         <!--[if lt IE 7]>
@@ -29,10 +31,13 @@
                 </a>
               {% endfor %}
             </div>
-        
           </div>
         <hr>
         {% include "booru/pagination.html" with tagString=tags %}
-        <script src="" async defer></script>
+        <script type="text/javascript">
+          $(window).on('load', function(){
+            $("#cover").hide();
+          });
+        </script>
     </body>
 </html>

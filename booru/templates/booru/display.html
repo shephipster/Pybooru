@@ -29,8 +29,14 @@
             }
             .tags{
                 width:10%;
-                height:100%;
+                height:75%;
                 float: left;
+                text-align:center;
+            }
+            .urls{
+                width:10%;
+                height:25%;
+                float:left;
                 text-align:center;
             }
             img {
@@ -43,6 +49,12 @@
             <h2>Tags</h2>
             {% for tag in tags %}
             <a href="../booru/search?tags={{tag}}">{{tag}}</a><br>
+            {% endfor %}
+        </div>
+        <div class="urls">
+            <h2>Urls</h2>
+            {% for url in urls %}
+            <a href="{{url}}">{{url}}</a><br>
             {% endfor %}
         </div>
         <div class="display">

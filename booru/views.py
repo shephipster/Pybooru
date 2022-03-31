@@ -32,12 +32,12 @@ def thumbnail(request, id):
 # /view/<id>
 def view(request, id):
     fileData = getMetaDataFromHydrusById(request, id)
-    sntstt = fileData['service_names_to_statuses_to_tags']
-    mt = sntstt['all known tags']
-    tags = mt['0']
+    tags = fileData['service_names_to_statuses_to_tags']['all known tags']['0']
+    urls = fileData['known_urls']
     return render(request, 'booru/display.html', {
         'id': id,
-        'tags': tags
+        'tags': tags,
+        'urls':urls
     })
 
 # /image/<id>
