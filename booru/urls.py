@@ -8,5 +8,6 @@ urlpatterns = [
     path("booru/search", views.search, name="search"),
     path("thumbnail/<id>", views.thumbnail, name="thumbnail"),
     path("view/<id>", views.view, name="view"),
-    path("image/<id>", views.image, name="image")
+    path("image/<id>", views.image, name="image"),
+    path("view/full/<id>", views.fullImage, name="fullImage"),
 ]
