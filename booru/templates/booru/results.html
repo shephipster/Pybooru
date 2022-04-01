@@ -4,7 +4,31 @@
 <!--[if IE 8]>         <html class="no-js lt-ie9"> <![endif]-->
 <!--[if gt IE 8]>      <html class="no-js"> <!--<![endif]-->
 <style>
-  
+  .thumbnail-grid{
+    display: grid;
+    grid-template-columns: repeat(5, auto);
+    grid-template-rows: repeat(5, auto);
+    column-gap: 10px;
+    row-gap: 10px;
+  }
+  a.thumbnail{
+    z-index:2;
+    position:relative;
+    display:block;
+    float:left;
+  }
+  .play-icon{
+    left:0;
+    bottom:0;
+    position: absolute;
+    z-index:1;
+  }
+  .audio-icon{
+    right:0;
+    bottom:0;
+    position: absolute;
+    z-index:1;
+  }
 </style>
 <html>
     <head>
@@ -15,25 +39,35 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
     </head>
     <body>
-        <!--[if lt IE 7]>
-            <p class="browsehappy">You are using an <strong>outdated</strong> browser. Please <a href="#">upgrade your browser</a> to improve your experience.</p>
-        <![endif]-->
-        Found <b>{{ total }}</b> file(s) with the tags: <b>{{tagString}}</b>
+        Found <b>{{ data|length }}</b> file(s) with the tags: <b>{{tag_string}}</b>
         <hr>
-        <div>
             <h1 class="text-4xl mb-4 font-bold">{{ title }}</h1>
-            <div class="col-md-3 col-sm-6">
-              {% for id in page_obj %}
-                <a href="/view/{{id}}" class="bordered card">
+            <div class="thumbnail-grid">
+              {% for file in page_obj %}
+              <div class="grid-item">
+                <a href="/view/{{file.id}}" class="thumbnail">
                   <img 
-                      src="/thumbnail/{{id}}"
+                      src="/thumbnail/{{file.id}}"
                     >
+                    {% if file.isVideo %}
+                    <span class = "play-icon">
+                      <img src="/static/play_icon.png" width="16" height="16" alt="animated">
+                    </span>
+                    {% endif %}
+                    {% if file.hasAudio %}
+                    <span class = "audio-icon">
+                      <img src="/static/audio_icon.png" width="16" height="16" alt="sound">
+                    </span>
+                    {% endif %}
                 </a>
+              </div>
               {% endfor %}
             </div>
           </div>
         <hr>
-        {% include "booru/pagination.html" with tagString=tags %}
+        <div align='center'>
+          {% include "booru/pagination.html" with tagString=tags %}
+        </div>
         <script type="text/javascript">
           $(window).on('load', function(){
             $("#cover").hide();

@@ -1,0 +1,40 @@
+<div class="display">
+    {% comment %} Django doesn't do switches apparently, so that's a bummer. Need to go yanderedev for this {% endcomment %}
+    {% if fileType == 0 %}
+        <img 
+            src="/image/{{id}}"
+        >
+    {%endif%}
+
+    {% if fileType == 1 %}
+    <video 
+        controls
+        loop
+        poster="/thumbnail/{{id}}"
+        src="/image/{{id}}"
+        type={{mime}}
+    >
+        Video not supported by your browser.
+    </video>
+    {%endif%}
+
+    {% if fileType == 2 %}
+    <audio 
+        src="/image/{{id}}"
+        type={{mime}}
+    >
+        Audio not supported by your browser.
+    </audio>
+    {%endif%}
+
+    {% if fileType == 3 %}
+    FLASH: Sorry, flash is not currently supported
+    {% endif %}
+
+    {% if fileType == 4 %}
+    <embed 
+        src="/image/{{id}}"
+        type="{{mime}}"
+    >
+    {%endif%}
+</div>

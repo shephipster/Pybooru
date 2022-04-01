@@ -29,20 +29,23 @@ def booru(request):
 def thumbnail(request, id):
     return HttpResponse(getThumbnail(request, id))
 
+def image(request, id):
+    return HttpResponse(getImage(request, id))
+
 # /view/<id>
 def view(request, id):
     fileData = getMetaDataFromHydrusById(request, id)
     tags = fileData['service_names_to_statuses_to_tags']['all known tags']['0']
     urls = fileData['known_urls']
+    file_type = getFileType(fileData['mime'])
+    fileUrl = getFileUrlFromId(request, id)
     return render(request, 'booru/display.html', {
         'id': id,
         'tags': tags,
-        'urls':urls
+        'urls': urls,
+        'type': file_type,
+        'mime': fileData['mime'],
     })
-
-# /image/<id>
-def image(request, id):
-    return HttpResponse(getImage(request, id))
 
 def search(request):
     #Server will use hydrus comma-delimination instead of space like others. Makes it a bit easier I feel
@@ -53,16 +56,26 @@ def search(request):
             cleaned_tags_string += tags[i] + ", "
             tags[i] = "\"" + str.strip(tags[i]) + "\""            
         cleaned_tags_string = cleaned_tags_string[:-2]
-        file_ids = getIdsFromHydrus(request, *tags)
         
-        #Thumbnails
-        thumbnail_urls = []
-        for id in file_ids:
-            thumbnail_urls.append(getThumbnailUrlFromId(request, id))
+        file_ids = getIdsFromHydrus(request, *tags)
+        file_data = []
+        
+        # Figuring out what is okay and what is not
+
+        for id in file_ids:            
+            meta = getMetaDataFromHydrusById(request, file_ids[i])
+            file_data.append(
+                {
+                    'id': id,
+                    'isVideo': isAnimated(meta['mime']),
+                    'hasAudio': meta['has_audio'],
+                    'url': getThumbnailUrlFromId(request, id)
+                })
+
 
         #pagination
         page_num = request.GET.get('page', 1)
-        paginator = Paginator(file_ids, 25)
+        paginator = Paginator(file_data, 25)
         try:
             page_obj = paginator.page(page_num) #get the apporpriate page
         except PageNotAnInteger:
@@ -71,12 +84,57 @@ def search(request):
             page_obj = paginator.page(paginator.num_pages)  #return to last page if going too far
         
         return render(request, 'booru/results.html', {
-            'ids': file_ids, 
-            'total': len(file_ids),
-            'tags': request.GET['tags'],
-            'tagString':cleaned_tags_string,
+            'data': file_data,
+            'tag_string': cleaned_tags_string,
             'page_obj': page_obj
         })
+
+def isAnimated(mimeType:str):
+    switcher = {
+        "image/jpeg": False,
+        "image/jpg": False,
+        "image/png": False,
+        "image/gif": True,
+        "video/webm": True,
+        "video/mp4": True
+    }
+    
+    return switcher.get(mimeType, "Invalide Mime Type Submited")
+
+def getFileType(mimeType:str):
+    """ 
+    0 = <img> Image
+    1 = <video> Video
+    2 = <audio> Audio
+    3 = <embed> Flash
+    4 = <embed> PDF
+    99 = unsupported
+    """
+    switcher = {
+        "image/jpeg": 0,
+        "image/jpg": 0,
+        "image/png": 0,
+        "image/apng": 0,
+        "image/gif": 0,
+        "image/bmp": 0,
+        "image/webp":0,
+        
+        "video/webm": 1,
+        "video/mp4": 1,
+        "video/x-matroska": 1,
+        "video/quicktime": 1,
+        
+        "audio/mp3": 2,
+        "audio/ogg": 2,
+        "audio/flac": 2,
+        "audio/x-wav": 2,
+        
+        "video/x-flv": 3,
+        "application/x-shockwave-flash": 3,
+        
+        "application/pdf": 4
+    }
+    return switcher.get(mimeType, 99)
 
 def tagsToHydrusString(*tags):
     tag_string = "["
@@ -91,7 +149,6 @@ def getIdsFromHydrus(request, *tags):
     if request.session['key']:
         url = getenv('HYDRUS_BASE') + "/get_files/search_files?tags="
         url += tagsToHydrusString(*tags)
-        print(url)
         res = requests.get(url, headers={
             'Hydrus-Client-API-Access-Key': request.session['key'],
             'User-Agent': "Pydrus-Client/1.0.0"
@@ -124,7 +181,7 @@ def getThumbnailUrlFromId(request, id):
 def getFileUrlFromId(request, id):
     if request.session['key']:
         """ This is absolutely influenced by hyshare """
-        return (getenv('HYDRUS_BASE') + 'get_files/file?id=' + str(id) + '&Hydrus-Client-API-Access-Key=' + request.session['key'])
+        return (getenv('HYDRUS_BASE') + '/get_files/file?file_id=' + str(id) + '&Hydrus-Client-API-Access-Key=' + request.session['key'])
     return ""
 
 def getMetaDataFromHydrusById(request, id):
