@@ -5,27 +5,29 @@
 <!--[if gt IE 8]>      <html class="no-js"> <!--<![endif]-->
 <html>
     <style>
-        html, body {
-            display: flex;
+        body {
+            display:flex;
+            min-height: 100vh;
+            max-width: 100%;
         }
         .display {  
             display: block;
-            margin-left: auto;
-            margin-right: auto;
             flex: 70%;
+            z-index:10;
+            width: 85vh;
         }
         .tags-and-urls{
-            width:10%;
-            height:5%;
+            width:15vh;
             text-align:center;
             flex: 15%;
+            z-index:5;
         }
     </style>
     
     <head>
         <meta charset="utf-8">
         <meta http-equiv="X-UA-Compatible" content="IE=edge">
-        <title>ShepBooru:{{id}}</title>
+        <title>{{title}}</title>
         <meta name="description" content="">
         <meta name="viewport" content="width=device-width, initial-scale=1">
     </head>
@@ -35,16 +37,15 @@
             {% for tag in tags %}
             <a href="../booru/search?tags={{tag}}"><font size="3">{{tag}}</font></a><br>
             {% endfor %}
-            
+            <h2>Urls</h2>
+            {% for url in urls %}
+            <a href="{{url}}"><font size="3">{{url}}</font></a><br>
+            {% endfor %} 
         </div>
         <div class="display">
             {% include "booru/view-file.html" with fileType=type mime=mime id=id height=height width=width%}
         </div>
         <div class="tags-and-urls">
-        <h2>Urls</h2>
-            {% for url in urls %}
-            <a href="{{url}}"><font size="3">{{url}}</font></a><br>
-            {% endfor %}
         </div>
     </body>
 </html>

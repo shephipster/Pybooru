@@ -34,11 +34,16 @@
     <head>
         <meta charset="utf-8">
         <meta http-equiv="X-UA-Compatible" content="IE=edge">
-        <title>Shep-booru</title>
+        <title>Shepbooru: {{tag_string}}</title>
         <meta name="description" content="">
         <meta name="viewport" content="width=device-width, initial-scale=1">
     </head>
     <body>
+      <form method="GET" action="search">
+        <input type="text" name="tags" >
+        <button type="submit" value="SUBMIT">Search</button
+      </form>
+      {% if data|length != 0 %}
         Found <b>{{ data|length }}</b> file(s) with the tags: <b>{{tag_string}}</b>
         <hr>
             <h1 class="text-4xl mb-4 font-bold">{{ title }}</h1>
@@ -74,4 +79,8 @@
           });
         </script>
     </body>
+    {% endif %}
+    {% if data|length == 0%}
+      Sorry, no files were found with the tags {{tag_string}}. Try changing your tags or checking for mispelled words.
+    {% endif %}
 </html>

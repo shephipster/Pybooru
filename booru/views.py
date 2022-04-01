@@ -4,6 +4,7 @@ from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from os import getenv
 import urllib
 import requests
+import re
 
 #Inspiration from https://github.com/floogulinc/hyshare/blob/master/src/
 
@@ -35,7 +36,7 @@ def image(request, id):
 # /view/<id>
 def view(request, id):
     fileData = getMetaDataFromHydrusById(request, id)
-    tags = fileData['service_names_to_statuses_to_tags']['all known tags']['0']
+    tags, title = cleanTags(*fileData['service_names_to_statuses_to_tags']['all known tags']['0'])
     urls = fileData['known_urls']
     file_type = getFileType(fileData['mime'])
     height = 0
@@ -51,7 +52,28 @@ def view(request, id):
         'type': file_type,
         'mime': fileData['mime'],
         'height': height,
-        'width': 'width'
+        'width': width,
+        'title': title
+    })
+    
+# view/full/<id>
+def fullImage(request, id):
+    fileData = getMetaDataFromHydrusById(request, id)
+    file_type = getFileType(fileData['mime'])
+    tags, title = cleanTags(*fileData['service_names_to_statuses_to_tags']['all known tags']['0'])
+    height = 0
+    width = 0
+    if fileData['height']:
+        height = fileData['height']
+    if fileData['width']:
+        width = fileData['width']
+    return render(request, 'booru/image-only.html', {
+        'id': id,
+        'fileType': file_type,
+        'mime': fileData['mime'],
+        'height': height,
+        'width': width,
+        'title': title
     })
 
 def search(request):
@@ -70,7 +92,7 @@ def search(request):
         # Figuring out what is okay and what is not
 
         for id in file_ids:            
-            meta = getMetaDataFromHydrusById(request, file_ids[i])
+            meta = getMetaDataFromHydrusById(request, id)
             file_data.append(
                 {
                     'id': id,
@@ -101,9 +123,25 @@ def isAnimated(mimeType:str):
         "image/jpeg": False,
         "image/jpg": False,
         "image/png": False,
+        "image/apng": True,
         "image/gif": True,
+        "image/bmp": False,
+        "image/webp":False,
+        
         "video/webm": True,
-        "video/mp4": True
+        "video/mp4": True,
+        "video/x-matroska": True,
+        "video/quicktime": True,
+        
+        "audio/mp3": False,
+        "audio/ogg": False,
+        "audio/flac": False,
+        "audio/x-wav": False,
+        
+        "video/x-flv": True,
+        "application/x-shockwave-flash": True,
+        
+        "application/pdf": True
     }
     
     return switcher.get(mimeType, "Invalide Mime Type Submited")
@@ -200,3 +238,15 @@ def getMetaDataFromHydrusById(request, id):
         })
         data = res.json()['metadata'][0]
         return data
+    
+def cleanTags(*tags):
+    """ Take a list of tags and remove certain ones that aren't important for the booru.
+    Namely, removes meta:* , booru:*, filename:*, and source:* """
+    cleanTags = []
+    title = "Shepbooru"
+    for tag in tags:
+        if not tag.startswith(('booru:', 'filename:', 'meta:', 'source:', 'pixiv work')):
+            cleanTags.append(tag)
+        if tag.startswith('title:'):
+            title = tag[6:]
+    return cleanTags, title

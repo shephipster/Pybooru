@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<!--[if lt IE 7]>      <html class="no-js lt-ie9 lt-ie8 lt-ie7"> <![endif]-->
+<!--[if IE 7]>         <html class="no-js lt-ie9 lt-ie8"> <![endif]-->
+<!--[if IE 8]>         <html class="no-js lt-ie9"> <![endif]-->
+<!--[if gt IE 8]>      <html class="no-js"> <!--<![endif]-->
+<html>
+    <style>
+        body {
+            display:flex;
+            min-height: 100vh;
+            max-width: 100%;
+        }
+        .display {  
+            display: block;
+        }
+    </style>
+    
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <title>{{title}}</title>
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+    </head>
+    <body>
+        <div class="display">
+            <a href="../{{id}}">
+            {% comment %} Django doesn't do switches apparently, so that's a bummer. Need to go yanderedev for this {% endcomment %}
+            {% if fileType == 0 %}
+            
+                <img 
+                    src="/image/{{id}}"
+                    height={{height}}
+                    width={{width}}
+                >
+            {%endif%}
+        
+            {% if fileType == 1 %}
+            <video 
+                controls
+                loop
+                poster="/thumbnail/{{id}}"
+                height={{height}}
+                width={{width}}
+                src="/image/{{id}}"
+                type={{mime}}
+            >
+                Video not supported by your browser.
+            </video>
+            {%endif%}
+        
+            {% if fileType == 2 %}
+            <audio 
+                src="/image/{{id}}"
+                type={{mime}}
+            >
+                Audio not supported by your browser.
+            </audio>
+            {%endif%}
+        
+            {% if fileType == 3 %}
+            FLASH: Sorry, flash is not currently supported
+            {% endif %}
+        
+            {% if fileType == 4 %}
+            <embed 
+                src="/image/{{id}}"
+                type="{{mime}}"
+            >
+            {%endif%}
+        </a>
+        </div>
+    </body>
+</html>
