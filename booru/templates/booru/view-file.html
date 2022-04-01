@@ -1,8 +1,18 @@
+<style>
+    .display{
+        display: block;
+        margin-left: auto;
+        margin-right: auto;
+        width: 50%;
+    }
+</style>
 <div class="display">
     {% comment %} Django doesn't do switches apparently, so that's a bummer. Need to go yanderedev for this {% endcomment %}
     {% if fileType == 0 %}
         <img 
             src="/image/{{id}}"
+            height={{height}}
+            width={{width}}
         >
     {%endif%}
 
@@ -11,6 +21,8 @@
         controls
         loop
         poster="/thumbnail/{{id}}"
+        height={{height}}
+        width={{width}}
         src="/image/{{id}}"
         type={{mime}}
     >

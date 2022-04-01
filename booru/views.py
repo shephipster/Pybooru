@@ -38,13 +38,20 @@ def view(request, id):
     tags = fileData['service_names_to_statuses_to_tags']['all known tags']['0']
     urls = fileData['known_urls']
     file_type = getFileType(fileData['mime'])
-    fileUrl = getFileUrlFromId(request, id)
+    height = 0
+    width = 0
+    if fileData['height']:
+        height = fileData['height']
+    if fileData['width']:
+        width = fileData['width']
     return render(request, 'booru/display.html', {
         'id': id,
         'tags': tags,
         'urls': urls,
         'type': file_type,
         'mime': fileData['mime'],
+        'height': height,
+        'width': 'width'
     })
 
 def search(request):
