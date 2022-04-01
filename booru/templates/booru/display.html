@@ -4,63 +4,48 @@
 <!--[if IE 8]>         <html class="no-js lt-ie9"> <![endif]-->
 <!--[if gt IE 8]>      <html class="no-js"> <!--<![endif]-->
 <html>
+    <style>
+        body {
+            display:flex;
+            min-height: 100vh;
+            max-width: 100%;
+        }
+        .display {  
+            display: block;
+            flex: 70%;
+            z-index:10;
+            width: 85vh;
+        }
+        .tags-and-urls{
+            width:15vh;
+            text-align:center;
+            flex: 15%;
+            z-index:5;
+        }
+    </style>
+    
     <head>
         <meta charset="utf-8">
         <meta http-equiv="X-UA-Compatible" content="IE=edge">
-        <title>ShepBooru:{{id}}</title>
+        <title>{{title}}</title>
         <meta name="description" content="">
         <meta name="viewport" content="width=device-width, initial-scale=1">
     </head>
     <body>
-        <!--[if lt IE 7]>
-            <p class="browsehappy">You are using an <strong>outdated</strong> browser. Please <a href="#">upgrade your browser</a> to improve your experience.</p>
-        <![endif]-->
-        <style>
-            html, body {
-                width: 100%;
-                height: 100%;
-                margin: 0;
-                padding: 0;
-            }
-            .display {
-                width: 80%;
-                height: 80%;
-                float: left;
-            }
-            .tags{
-                width:10%;
-                height:75%;
-                float: left;
-                text-align:center;
-            }
-            .urls{
-                width:10%;
-                height:25%;
-                float:left;
-                text-align:center;
-            }
-            img {
-                width: 100%;
-                height: 100%;
-                object-fit: contain;
-            }
-        </style>
-        <div class="tags">
+        <div class="tags-and-urls">
             <h2>Tags</h2>
             {% for tag in tags %}
-            <a href="../booru/search?tags={{tag}}">{{tag}}</a><br>
+            <a href="../booru/search?tags={{tag}}"><font size="3">{{tag}}</font></a><br>
             {% endfor %}
-        </div>
-        <div class="urls">
             <h2>Urls</h2>
             {% for url in urls %}
-            <a href="{{url}}">{{url}}</a><br>
-            {% endfor %}
+            <a href="{{url}}"><font size="3">{{url}}</font></a><br>
+            {% endfor %} 
         </div>
         <div class="display">
-            <img src="/image/{{id}}">
+            {% include "booru/view-file.html" with fileType=type mime=mime id=id height=height width=width%}
         </div>
-        
-        <script src="" async defer></script>
+        <div class="tags-and-urls">
+        </div>
     </body>
 </html>
