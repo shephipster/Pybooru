@@ -5,11 +5,18 @@
 <!--[if gt IE 8]>      <html class="no-js"> <!--<![endif]-->
 <style>
   .thumbnail-grid{
-    display: grid;
-    grid-template-columns: repeat(5, auto);
-    grid-template-rows: repeat(5, auto);
-    column-gap: 10px;
-    row-gap: 10px;
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  .grid-item{
+    display:flex;
+    align-items: center;
+    justify-content: center;
+    object-fit: contain;
+    flex: 0 0 calc(20%-40%);
+    padding: 10px;
+    margin: 5px;
   }
   a.thumbnail{
     z-index:2;
@@ -41,14 +48,15 @@
     <body>
       <form method="GET" action="search">
         <input type="text" name="tags" >
+        <input type="text" name="page" value="{{page}}" hidden="true">
         <button type="submit" value="SUBMIT">Search</button
       </form>
-      {% if data|length != 0 %}
-        Found <b>{{ data|length }}</b> file(s) with the tags: <b>{{tag_string}}</b>
+      {% if total != 0 %}
+        Found <b>{{ total }}</b> file(s) with the tags: <b>{{tag_string}}</b>
         <hr>
             <h1 class="text-4xl mb-4 font-bold">{{ title }}</h1>
             <div class="thumbnail-grid">
-              {% for file in page_obj %}
+              {% for file in data %}
               <div class="grid-item">
                 <a href="/view/{{file.id}}" class="thumbnail">
                   <img 
@@ -56,12 +64,12 @@
                     >
                     {% if file.isVideo %}
                     <span class = "play-icon">
-                      <img src="/static/play_icon.png" width="16" height="16" alt="animated">
+                      <img src="/booru/static/play_icon.png" width="16" height="16" alt="animated">
                     </span>
                     {% endif %}
                     {% if file.hasAudio %}
                     <span class = "audio-icon">
-                      <img src="/static/audio_icon.png" width="16" height="16" alt="sound">
+                      <img src="/booru/static/audio_icon.png" width="16" height="16" alt="sound">
                     </span>
                     {% endif %}
                 </a>
@@ -71,7 +79,7 @@
           </div>
         <hr>
         <div align='center'>
-          {% include "booru/pagination.html" with tagString=tags %}
+          {% include "booru/pagination.html" with tags=tags page=page%}
         </div>
         <script type="text/javascript">
           $(window).on('load', function(){
@@ -80,7 +88,7 @@
         </script>
     </body>
     {% endif %}
-    {% if data|length == 0%}
+    {% if total == 0%}
       Sorry, no files were found with the tags {{tag_string}}. Try changing your tags or checking for mispelled words.
     {% endif %}
 </html>

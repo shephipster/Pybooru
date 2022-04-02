@@ -4,7 +4,8 @@ from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from os import getenv
 import urllib
 import requests
-import re
+
+#PAGE_SIZES = 30 #how many items to show per page
 
 #Inspiration from https://github.com/floogulinc/hyshare/blob/master/src/
 
@@ -79,32 +80,42 @@ def fullImage(request, id):
 def search(request):
     #Server will use hydrus comma-delimination instead of space like others. Makes it a bit easier I feel
     if request.session.has_key('key'): #Current session is approved
-        tags = request.GET['tags'].split(',')
+        raw_tags = request.GET['tags']
+        tags = raw_tags.split(',')
+        title = ""
+        
+        #Get the page we are working with and only get make request for those files
+        page_num = int(request.GET.get('page', 1))
+        PAGE_SIZES = int(request.GET.get('page_size', 25))
+        page_start = (page_num - 1) * PAGE_SIZES
+        page_end = (page_num * PAGE_SIZES)
+        
         cleaned_tags_string = ""
         for i in range(0, len(tags)):
-            cleaned_tags_string += tags[i] + ", "
-            tags[i] = "\"" + str.strip(tags[i]) + "\""            
+            cleaned_tags_string += tags[i] + ", " 
+            title += tags[i].upper() + ", "
+            tags[i] = "\"" + str.strip(tags[i]) + "\"" 
+                       
         cleaned_tags_string = cleaned_tags_string[:-2]
+        title = title[:-2]
         
         file_ids = getIdsFromHydrus(request, *tags)
         file_data = []
         
         # Figuring out what is okay and what is not
 
-        for id in file_ids:            
+        for id in file_ids[page_start:page_end]:  
             meta = getMetaDataFromHydrusById(request, id)
             file_data.append(
                 {
                     'id': id,
                     'isVideo': isAnimated(meta['mime']),
-                    'hasAudio': meta['has_audio'],
-                    'url': getThumbnailUrlFromId(request, id)
+                    'hasAudio': meta['has_audio']
                 })
 
 
-        #pagination
-        page_num = request.GET.get('page', 1)
-        paginator = Paginator(file_data, 25)
+        #pagination        
+        paginator = Paginator(file_ids, PAGE_SIZES)
         try:
             page_obj = paginator.page(page_num) #get the apporpriate page
         except PageNotAnInteger:
@@ -115,7 +126,12 @@ def search(request):
         return render(request, 'booru/results.html', {
             'data': file_data,
             'tag_string': cleaned_tags_string,
-            'page_obj': page_obj
+            'tags': raw_tags,
+            'page_obj': page_obj,
+            'page' : 1,
+            'title': title,
+            'total' : len(file_ids),
+            'page_size': PAGE_SIZES
         })
 
 def isAnimated(mimeType:str):

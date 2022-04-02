@@ -1,8 +1,14 @@
+{% comment %} 
+Issue: pagination very slow. Seems likely that it is having to reload ALL the images
+once again instead of either loading everything at once and only showing some or,
+ideally, only grabbing the images in the range being shown
+{% endcomment %}
+Tags : {{tags}} | Page: {{page}} of {{page_obj.paginator.num_pages}}<br>
 {% if page_obj.has_previous %}
-  <a href="?tags={{tagString}}&page={{ page_obj.previous_page_number }}">« Previous page</a>
+  <a href="?tags={{tags}}&page_size={{page_size}}&page={{ page_obj.previous_page_number }}">« Previous page</a>
 
   {% if page_obj.number > 3 %}
-    <a href="?tags={{tagString}}&page=1">1</a>
+    <a href="?tags={{tags}}&page=1">1</a>
     {% if page_obj.number > 4 %}
       <span>...</span>
     {% endif %}
@@ -11,19 +17,30 @@
 
 {% for num in page_obj.paginator.page_range %}
   {% if page_obj.number == num %}
-    <a href="?tags={{tagString}}&page={{ num }}">{{ num }}</a>
+    <a href="?tags={{tags}}&page_size={{page_size}}&page={{ num }}">{{ num }}</a>
   {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
-    <a href="?tags={{tagString}}&page={{ num }}">{{ num }}</a>
+    <a href="?tags={{tags}}&page_size={{page_size}}&page={{ num }}">{{ num }}</a>
   {% endif %}
 {% endfor %}
 
 {% if page_obj.has_next %}
   {% if page_obj.number < page_obj.paginator.num_pages|add:'-3' %}
     <span>...</span>
-    <a href="?tags={{tagString}}&page={{ page_obj.paginator.num_pages }}">{{ page_obj.paginator.num_pages }}</a>
+    <a href="?tags={{tags}}&page_size={{page_size}}&page={{ page_obj.paginator.num_pages }}">{{ page_obj.paginator.num_pages }}</a>
   {% elif page_obj.number < page_obj.paginator.num_pages|add:'-2' %}
-    <a href="?tags={{tagString}}&page={{ page_obj.paginator.num_pages }}">{{ page_obj.paginator.num_pages }}</a>
+    <a href="?tags={{tags}}&page_size={{page_size}}&page={{ page_obj.paginator.num_pages }}">{{ page_obj.paginator.num_pages }}</a>
   {% endif %}
 
-  <a href="?tags={{tagString}}&page={{ page_obj.next_page_number }}">Next Page »</a>
+  <a href="?tags={{tags}}&page_size={{page_size}}&page={{ page_obj.next_page_number }}">Next Page »</a>
 {% endif %}
+
+<div>
+  Results per page
+  <a href="?tags={{tags}}&page_size={{10}}&page={{ page }}">10</a>
+  <span>  </span>
+  <a href="?tags={{tags}}&page_size={{25}}&page={{ page }}">25</a>
+  <span>  </span>
+  <a href="?tags={{tags}}&page_size={{50}}&page={{ page }}">50</a>
+  <span>  </span>
+  <a href="?tags={{tags}}&page_size={{100}}&page={{ page }}">100</a>  
+</div>
