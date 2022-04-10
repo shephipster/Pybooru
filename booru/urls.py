@@ -10,4 +10,6 @@ urlpatterns = [
     path("view/<id>", views.view, name="view"),
     path("image/<id>", views.image, name="image"),
     path("view/full/<id>", views.fullImage, name="fullImage"),
+    # path("create_subooru", views.create_subooru, name="createSubooru"),
+    # path("view_subooru/<id>", views.view_subooru, name="viewSubooru"),
 ]

@@ -52,24 +52,30 @@
         <button type="submit" value="SUBMIT">Search</button
       </form>
       {% if total != 0 %}
+        {% if tag_string == "" %}
+          <b>{{ total }}</b> file(s) found
+        {% else %}
         Found <b>{{ total }}</b> file(s) with the tags: <b>{{tag_string}}</b>
+        <br> Raw tags are {{raw_tags}}<br>
+        {%endif%}
+        
         <hr>
-            <h1 class="text-4xl mb-4 font-bold">{{ title }}</h1>
+            <center><h1 class="text-4xl mb-4 font-bold">{{ title }}</h1></center>
             <div class="thumbnail-grid">
               {% for file in data %}
               <div class="grid-item">
-                <a href="/view/{{file.id}}" class="thumbnail">
+                <a href="/view/{{file.id}}?tags={{raw_tags}}" class="thumbnail">
                   <img 
                       src="/thumbnail/{{file.id}}"
                     >
                     {% if file.isVideo %}
                     <span class = "play-icon">
-                      <img src="/booru/static/play_icon.png" width="16" height="16" alt="animated">
+                      <img src="../../static/play_icon.png" width="16" height="16" alt="animated">
                     </span>
                     {% endif %}
                     {% if file.hasAudio %}
                     <span class = "audio-icon">
-                      <img src="/booru/static/audio_icon.png" width="16" height="16" alt="sound">
+                      <img src="../../static/audio_icon.png" width="16" height="16" alt="sound">
                     </span>
                     {% endif %}
                 </a>

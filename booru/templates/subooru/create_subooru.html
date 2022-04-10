@@ -1,0 +1,25 @@
+<form action="/create_subooru" method="post">
+    {% csrf_token %}
+
+    <div class="fieldWrapper">
+        {{form.name.errors}}
+        {{form.name.label_tag}}
+        {{form.name}}
+    </div><br>
+
+    <div class="fieldWrapper">
+        {{form.ttl.errors}}
+        {{form.ttl.label_tag}}
+        {{form.ttl}}
+    </div><br>
+
+    {% if form.errors %}
+    {% for field in form %}
+        {% for error in field.errors %}
+            <p> {{field.name}} : {{ error }} </p>
+        {% endfor %}
+    {% endfor %}
+    {% endif %}
+
+    <input type="submit" value="Submit">
+</form>
