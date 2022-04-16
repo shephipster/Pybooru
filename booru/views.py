@@ -1,9 +1,9 @@
-from datetime import datetime
 from django.http import HttpResponse, HttpResponseRedirect
 from django.shortcuts import render
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from os import getenv
 from .forms import *
+from .models import *
 import urllib
 import requests
 
@@ -17,16 +17,28 @@ def home(request):
 
 def authorize(request):
     if request.method == "POST":
-        token = request.POST['token']
-        key = getenv('AUTH_KEY')
-        if token == key:
+        subooru_key = request.POST['token']
+        auth_key = getenv('AUTH_KEY')
+        if subooru_key == auth_key:
             booru_key = getenv("BOORU_KEY")
             request.session['key'] = booru_key
-        return HttpResponseRedirect('/booru')
+            #ask if there should be an update
+            return HttpResponseRedirect('../update')            
+        else:
+            subooru = Subooru.objects.filter(key=subooru_key).first()
+            if subooru:
+                return HttpResponseRedirect(f'/subooru?id={subooru_key}')
+            else:
+                return HttpResponseRedirect('/')
+
         
 def booru(request):
-    if request.session.has_key('key'): #Current session is approved
-        return render(request, 'booru/booru.html')
+    if request.session['key']: #Current session is approved
+        total_files = File.objects.count()      
+        return render(request, 'booru/booru.html', {
+            'total_posts': total_files, 
+            #'all_tags': Tag.objects.all().order_by('count')
+            })
     return HttpResponseRedirect("/") #not authorized, redired to login
 
 #/thumbnail/<id>
@@ -125,10 +137,12 @@ def fullImage(request, id):
         'tags': tags
     })
 
+
 def search(request):
     #Server will use hydrus comma-delimination instead of space like others. Makes it a bit easier I feel
     if request.session.has_key('key'): #Current session is approved
-        raw_tags = request.GET['tags']
+
+        raw_tags = request.GET.get('tags', '')
         tags = raw_tags.split(',')
         title = ""
         
@@ -197,6 +211,7 @@ def search(request):
             'title': title,
             'total' : len(file_ids),
             'page_size': PAGE_SIZES,
+            # 'top_tags': getTagsOfIds(request, *file_ids),
         })
 
 def isAnimated(mimeType:str):
@@ -276,19 +291,16 @@ def getIdsFromHydrus(request, *tags) -> list:
     if request.session['key']:
         url = getenv('HYDRUS_BASE') + "/get_files/search_files?tags="
         url += tagsToHydrusString(*tags)
+        key = request.session['key']
         res = requests.get(url, headers={
-            'Hydrus-Client-API-Access-Key': request.session['key'],
+            'Hydrus-Client-API-Access-Key': key,
             'User-Agent': "Pydrus-Client/1.0.0"
         })
         ids = res.json()['file_ids']
         
         #take the tags, and then do a search based on the tag
-        
-        
-        
-        return ids
-    
-    
+
+        return ids  
 
 def getThumbnail(request, hydrus_id):
     url = getenv('HYDRUS_BASE') + "/get_files/thumbnail?file_id=" + str(hydrus_id)
@@ -326,6 +338,22 @@ def getMetaDataFromHydrusById(request, id):
             'User-Agent': "Pydrus-Client/1.0.0"
         })
         data = res.json()['metadata'][0]
+        return data
+    
+def getMetaOfIds(request, *ids):
+    if request.session['key']:
+        url = getenv('HYDRUS_BASE') + '/get_files/file_metadata?file_ids='
+        tag_string = "["
+        for tag in ids:
+            tag_string += str(tag) + ","
+        tag_string = tag_string[:-1]
+        tag_string = tag_string + "]"
+        url += urllib.parse.quote(tag_string)
+        res = requests.get(url, headers={
+            'Hydrus-Client-API-Access-Key': request.session['key'],
+            'User-Agent': "Pydrus-Client/1.0.0"
+        })
+        data = res.json()['metadata']
         return data
     
 def cleanTags(*tags:str):
@@ -393,59 +421,76 @@ def cleanTags(*tags:str):
         
     return cleanTags, title
 
+        
 def create_subooru(request):
-    ids = request.POST.get("ids", [-1])
-    if request.method == "POST":
-        form = SubooruForm(data=request.POST)
+    if request.method == 'POST':
+        form = SubooruForm(request.POST)
         if form.is_valid():
-            form.save()
-            print(form)
-            return HttpResponseRedirect("/view_subooru/{form.key}")
+            ent = form.save()
+            render(request, f"../edit/subooru?key={ent.pk}")
     else:
-            form = SubooruForm(initial={
-                'name':"Subooru",
-                'started':datetime.now(),
-                'ids':ids,
-                'alive':True,
-                'active':True
-            })
-    return render(request, 'subooru/create_subooru.html', {'form':form})
+        form = SubooruForm()
+    return render(request, 'create/subooru.html', {'form':form})
 
-def view_subooru(request, id):
-    subooru = Subooru.objects.get(id)
-    file_ids = subooru.ids
-    file_data = []
-    page_num = int(request.GET.get('page', 1))
-    PAGE_SIZES = int(request.GET.get('page_size', 25))
-    page_start = (page_num - 1) * PAGE_SIZES
-    page_end = (page_num * PAGE_SIZES)
-        
-        # Figuring out what is okay and what is not
-
-    for id in file_ids[page_start:page_end]:  
-        meta = getMetaDataFromHydrusById(request, id)
-        file_data.append(
-            {
-                'id': id,
-                'isVideo': isAnimated(meta['mime']),
-                'hasAudio': meta['has_audio']
-            })
-
-        #pagination        
-        paginator = Paginator(file_ids, PAGE_SIZES)
-        try:
-            page_obj = paginator.page(page_num) #get the apporpriate page
-        except PageNotAnInteger:
-            page_obj = paginator.page(1)    #Return to page 1 if invalid page
-        except EmptyPage:
-            page_obj = paginator.page(paginator.num_pages)  #return to last page if going too far
-        
-        return render(request, 'subooru/view.html', {
-            'data': file_data,
-            'page_obj': page_obj,
-            'page' : 1,
-            'title': subooru.name,
-            'total' : len(file_ids),
-            'page_size': PAGE_SIZES
-        })
+def edit_subooru(request):
+    key = request.GET['key']
     
+    #TODO:
+    """
+    Display IDS and TAGS in their own sections
+    Each section should be editable
+    TAG|ID             blacklist?[]         REMOVE
+    ADD_NEW
+    """
+    
+    return HttpResponse(f"Editing Subooru {key}")
+    
+    
+def updateTables(key):
+    #get tags
+    BOORU_KEY = getenv("BOORU_KEY")
+    url = getenv('HYDRUS_BASE') + "/add_tags/search_tags?search=*"
+    res = requests.get(url, headers={
+        'Hydrus-Client-API-Access-Key': BOORU_KEY,
+        'User-Agent': "Pydrus-Client/1.0.0"
+    }) 
+    json_res = res.json()
+    for tag in json_res['tags']:
+        if Tag.objects.filter(name=tag['value']).first() == None:
+            print(f"Adding tag {tag}\r", end='')
+            TagModel = Tag(name=tag['value'], count=tag['count'])
+            TagModel.save()
+        else:
+            print(f"Tag {tag} already in DB\t\t\t\t\r", end='')
+        
+    url = getenv('HYDRUS_BASE') + "/get_files/search_files?return_hashes=true"
+    res = requests.get(url, headers={
+        'Hydrus-Client-API-Access-Key': BOORU_KEY,
+        'User-Agent': "Pydrus-Client/1.0.0",
+    }) 
+    json_res = res.json()
+    #get files/hashes
+    for file_hash in json_res['hashes']:
+        if File.objects.filter(hash=file_hash).first() == None:
+            FileModel = File(hash=file_hash)
+            FileModel.save()
+            print(f"Adding hash {file_hash} to DB\r", end='')
+        else:
+            print(f'Hash {file_hash} already in DB\r', end='')
+            
+def getTagsOfIds(request, *ids):
+    #poll hydrus for all these ids, then compile a list of all their tags
+    tagDict = dict()
+    for id in ids:
+        fileData = getMetaDataFromHydrusById(request, id)
+        if len(fileData['service_names_to_statuses_to_tags']) != 0:
+            tags = fileData['service_names_to_statuses_to_tags']['all known tags']['0']
+            tags = cleanTags(*tags)[0]
+            for tag in tags:
+                if tagDict.get(tag) != None:
+                    val = tagDict.get(tag) + 1
+                    tagDict[tag] = val
+                else:
+                    tagDict[tag] = 1
+    
+    return sorted(tagDict)[0:25]

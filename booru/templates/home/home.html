@@ -4,6 +4,24 @@
 <!--[if IE 8]>         <html class="no-js lt-ie9"> <![endif]-->
 <!--[if gt IE 8]>      <html class="no-js"> <!--<![endif]-->
 <html>
+    <style>
+        .main{
+            margin: 0;
+            position: absolute;
+            top: 35%;
+            left: 50%;
+            -ms-transform: translate(-50%, -50%);
+            transform: translate(-50%, -50%);
+        }
+        .embed{
+            margin: 0;
+            position: absolute;
+            bottom: 0%;
+            left: 50%;
+            -ms-transform: translate(-50%, -0%);
+            transform: translate(-50%, -0%);
+        }
+    </style>
     <head>
         <meta charset="utf-8">
         <meta http-equiv="X-UA-Compatible" content="IE=edge">
@@ -12,22 +30,30 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <link rel="stylesheet" href="">
     </head>
-    <body><center>
+    <body>
         <!--[if lt IE 7]>
             <p class="browsehappy">You are using an <strong>outdated</strong> browser. Please <a href="#">upgrade your browser</a> to improve your experience.</p>
         <![endif]-->
+        <div class="main">
+            <center>
+            <h1>Welcome to Shephipster's Personal Booru!</h1>
+            <h2>
+                Please enter a key below to access the system
+            </h2>
+            <script src="" async defer></script>
+            <form method="POST" action="/auth/">
+                {% csrf_token %}
+                Token: <input type="text" name="token" >
+                <button type="submit" value="SUBMIT">Access</button
+            </form>
+            </center>
+        </div>
 
-        <h1>Welcome to Shephipster's Personal Booru!</h1>
-        <h2>
-            Please enter a key below to access the system
-        </h2>
-        <div>
-        <script src="" async defer></script>
-        <form method="POST" action="/auth/">
-            {% csrf_token %}
-            Token: <input type="text" name="token" >
-            <button type="submit" value="SUBMIT">Access</button
-        </form>
-    </div>
-    </center></body>
+        <div class="embed">
+            <center>
+            <font size=3>We're a DLSite affiliate, you can check out some of our products down below</font><br>
+            <a rel="noopener sponsored" href="https://www.dlsite.com/home/dlaf/=/aid/Shephipster/url/https%3A%2F%2Fwww.dlsite.com%2Fhome%2Fcircle%2Fprofile%2F%3D%2Fmaker_id%2FRG64847.html%2F%3Futm_medium%3Daffiliate%26utm_campaign%3Dbnlink%26utm_content%3Dbn_sp_300_250_dojin_01.gif" target="_blank"><img src="https://www.dlsite.com/img/male/dojin/bn_sp_300_250_dojin_01.gif" alt="同人誌、同人ゲーム、同人ソフトのダウンロードショップ - DLsite" width="300" height="250" border="0" /></a>
+            </center>
+        </div>
+    </body>
 </html>

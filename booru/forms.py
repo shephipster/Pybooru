@@ -4,4 +4,4 @@ from .models import Subooru
 class SubooruForm(ModelForm):
     class Meta:
         model = Subooru
-        fields = ['key','ids','name']
+        fields = ['name']

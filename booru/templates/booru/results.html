@@ -83,9 +83,9 @@
               {% endfor %}
             </div>
           </div>
-        <hr>
+        </hr>
         <div align='center'>
-          {% include "booru/pagination.html" with tags=tags page=page%}
+          {% include "booru/pagination.html" with tags=raw_tags page=page%}
         </div>
         <script type="text/javascript">
           $(window).on('load', function(){

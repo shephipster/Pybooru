@@ -3,7 +3,26 @@
 <!--[if IE 7]>         <html class="no-js lt-ie9 lt-ie8"> <![endif]-->
 <!--[if IE 8]>         <html class="no-js lt-ie9"> <![endif]-->
 <!--[if gt IE 8]>      <html class="no-js"> <!--<![endif]-->
+
 <html>
+    <style>
+        .main{
+            margin: 0;
+            position: absolute;
+            top: 35%;
+            left: 50%;
+            -ms-transform: translate(-50%, -50%);
+            transform: translate(-50%, -50%);
+        }
+        .embed{
+            margin: 0;
+            position: absolute;
+            bottom: 0%;
+            left: 50%;
+            -ms-transform: translate(-50%, -0%);
+            transform: translate(-50%, -0%);
+        }
+    </style>
     <head>
         <meta charset="utf-8">
         <meta http-equiv="X-UA-Compatible" content="IE=edge">
@@ -16,14 +35,21 @@
         <!--[if lt IE 7]>
             <p class="browsehappy">You are using an <strong>outdated</strong> browser. Please <a href="#">upgrade your browser</a> to improve your experience.</p>
         <![endif]-->
-        <center>
+        <div class="main">
+            <center>
             <h1>Welcome to Shep's Booru!</h1>
             <h2>You may now search the booru using the below field</h2>
-            <form method="GET" action="search">
-                <input type="text" name="tags">
-                <button type="submit" value="SUBMIT">Search</button
-            </form>
-        </center>
-        <script src="" async defer></script>
+                <form method="GET" action="search">
+                    <input type="text" name="tags">
+                    <button type="submit" value="SUBMIT">Search</button
+                </form>
+                <br>
+                <font size='4'>{{total_posts}} Files in the booru</font>
+            </center>
+            </div>
+            <div class="embed">
+                <a rel="noopener" href="https://www.dlsite.com/home/?utm_medium=affiliate&utm_campaign=bnlink&utm_content=bn_sp_300_250_dojin_01.gif" target="_blank"><img src="https://www.dlsite.com/img/male/dojin/bn_sp_300_250_dojin_01.gif" alt="同人誌、同人ゲーム、同人ソフトのダウンロードショップ - DLsite" width="300" height="250" border="0" /></a>
+            </div>
+                
     </body>
 </html>

@@ -112,4 +112,21 @@
             </div>
         </div></center>
     </body>
+    <script type="text/javascript">
+        window.onload = function(){
+            var demo = document.getElementById('html');
+            var left_arrow = 37;
+            var right_arrow = 39;
+          
+            window.onkeydown= function(gfg){
+                if(gfg.keyCode === left_arrow){
+                    window.location.href = '{{previousPost}}?tags={{raw_tags}}'
+                };
+                if(gfg.keyCode === right_arrow)
+               {
+                window.location.href = '{{nextPost}}?tags={{raw_tags}}'
+               };
+            };
+        };    
+      </script>
 </html>
