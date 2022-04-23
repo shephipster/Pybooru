@@ -7,6 +7,10 @@ from .models import *
 import urllib
 import requests
 
+
+HYDRUS_AUTH_KEY = getenv('HYDRUS_KEY')
+FULL_BOORU_KEY = getenv('FULL_BOORU_KEY')
+HYDRUS_BASE = getenv('HYDRUS_BASE')
 #PAGE_SIZES = 30 #how many items to show per page
 
 #Inspiration from https://github.com/floogulinc/hyshare/blob/master/src/
@@ -17,29 +21,38 @@ def home(request):
 
 def authorize(request):
     if request.method == "POST":
-        subooru_key = request.POST['token']
-        auth_key = getenv('AUTH_KEY')
-        if subooru_key == auth_key:
-            booru_key = getenv("BOORU_KEY")
-            request.session['key'] = booru_key
-            #ask if there should be an update
+        booru_key = request.POST['token']
+        if booru_key == FULL_BOORU_KEY:
+            request.session['booru_key'] = booru_key
+            request.session['type'] = "FULL"
+            request.session['key'] = True
+            return HttpResponseRedirect('../booru')
+        elif booru_key == "update":
             return HttpResponseRedirect('../update')            
         else:
-            subooru = Subooru.objects.filter(key=subooru_key).first()
+            subooru = Subooru.objects.filter(key=booru_key).first()
             if subooru:
-                return HttpResponseRedirect(f'/subooru?id={subooru_key}')
+                request.session['booru_key'] = booru_key
+                request.session['type'] = "SUB"
+                return HttpResponseRedirect('../booru')
             else:
                 return HttpResponseRedirect('/')
 
         
 def booru(request):
     if request.session['key']: #Current session is approved
-        total_files = File.objects.count()      
+        if request.session['type'] == "SUB":
+            booru_key = request.session['booru_key']
+            subooru = Subooru.objects.get(key=booru_key)
+            total_files = subooru.files.all().count()
+        else:
+            total_files = File.objects.count()      
         return render(request, 'booru/booru.html', {
             'total_posts': total_files, 
             #'all_tags': Tag.objects.all().order_by('count')
             })
-    return HttpResponseRedirect("/") #not authorized, redired to login
+    else:
+        return HttpResponseRedirect("/") #not authorized, redired to login
 
 #/thumbnail/<id>
 def thumbnail(request, id):
@@ -161,13 +174,30 @@ def search(request):
         cleaned_tags_string = cleaned_tags_string[:-2]
         title = title[:-2]
         
+        file_hashes = getHashesFromHydrus(request, *tags)
         file_ids = getIdsFromHydrus(request, *tags)
-        file_data = []
-        canCycle = len(file_ids) > 1
-        # Figuring out what is okay and what is not
-
         
-        for index, id in enumerate(file_ids[page_start:page_end]):  
+        file_data = []
+        canCycle = len(file_hashes) > 1
+        # Figuring out what is okay and what is not
+        if request.session['type'] == "SUB":
+            allowed_hashes = []
+            display_hashes = []
+            display_ids = []
+            sub = Subooru.objects.get(key=request.session['booru_key'])
+            allowed_files_qs = sub.files.all()
+            for file in allowed_files_qs:
+                allowed_hashes.append(file.hash)
+                
+            for hash in allowed_hashes:
+                if hash in file_hashes:
+                    display_hashes.append(hash)
+                    display_ids.append(file_ids[file_hashes.index(hash)])
+        else:
+           display_hashes = file_hashes
+           display_ids = file_ids 
+                
+        for index, id in enumerate(display_ids[page_start:page_end]):  
             meta = getMetaDataFromHydrusById(request, id)
             
             if canCycle:
@@ -184,17 +214,17 @@ def search(request):
             file_data.append(
                 {
                     'id': id,
+                    'hash': display_hashes[index],
                     'isVideo': isAnimated(meta['mime']),
                     'hasAudio': meta['has_audio'],
                     'canCycle': canCycle,
                     'nextResult': nextResult,
-                    'previousResult': previousResult
-                    
+                    'previousResult': previousResult                                        
                 })
 
 
         #pagination        
-        paginator = Paginator(file_ids, PAGE_SIZES)
+        paginator = Paginator(display_ids, PAGE_SIZES)
         try:
             page_obj = paginator.page(page_num) #get the apporpriate page
         except PageNotAnInteger:
@@ -209,8 +239,9 @@ def search(request):
             'page_obj': page_obj,
             'page' : 1,
             'title': title,
-            'total' : len(file_ids),
+            'total' : len(display_hashes),
             'page_size': PAGE_SIZES,
+            'canAddToSubooru': request.session['type'] != "SUB"
             # 'top_tags': getTagsOfIds(request, *file_ids),
         })
 
@@ -280,7 +311,10 @@ def getFileType(mimeType:str):
 def tagsToHydrusString(*tags):
     tag_string = "["
     for tag in tags:
-        tag_string += tag + ","
+        if not tag.startswith('\"'):
+            tag_string += '\"' + tag + "\","
+        else:
+            tag_string += tag + ","
     tag_string = tag_string[:-1]
     tag_string = tag_string + ",\"system:archive\"]"
     url = urllib.parse.quote(tag_string)
@@ -291,12 +325,26 @@ def getIdsFromHydrus(request, *tags) -> list:
     if request.session['key']:
         url = getenv('HYDRUS_BASE') + "/get_files/search_files?tags="
         url += tagsToHydrusString(*tags)
-        key = request.session['key']
         res = requests.get(url, headers={
-            'Hydrus-Client-API-Access-Key': key,
+            'Hydrus-Client-API-Access-Key': HYDRUS_AUTH_KEY,
             'User-Agent': "Pydrus-Client/1.0.0"
         })
         ids = res.json()['file_ids']
+        
+        #take the tags, and then do a search based on the tag
+
+        return ids 
+    
+def getHashesFromHydrus(request, *tags) -> list:
+    if request.session['key']:
+        url = getenv('HYDRUS_BASE') + "/get_files/search_files?tags="
+        url += tagsToHydrusString(*tags)
+        url += "&return_hashes=true"
+        res = requests.get(url, headers={
+            'Hydrus-Client-API-Access-Key': HYDRUS_AUTH_KEY,
+            'User-Agent': "Pydrus-Client/1.0.0"
+        })
+        ids = res.json()['hashes']
         
         #take the tags, and then do a search based on the tag
 
@@ -305,7 +353,7 @@ def getIdsFromHydrus(request, *tags) -> list:
 def getThumbnail(request, hydrus_id):
     url = getenv('HYDRUS_BASE') + "/get_files/thumbnail?file_id=" + str(hydrus_id)
     res = requests.get(url, headers={
-        'Hydrus-Client-API-Access-Key': request.session['key'],
+        'Hydrus-Client-API-Access-Key': HYDRUS_AUTH_KEY,
         'User-Agent': "Pydrus-Client/1.0.0"
     })
     return res.content  
@@ -313,7 +361,7 @@ def getThumbnail(request, hydrus_id):
 def getImage(request, hydrus_id):
     url = getenv('HYDRUS_BASE') + "/get_files/file?file_id=" + str(hydrus_id)
     res = requests.get(url, headers={
-        'Hydrus-Client-API-Access-Key': request.session['key'],
+        'Hydrus-Client-API-Access-Key': HYDRUS_AUTH_KEY,
         'User-Agent': "Pydrus-Client/1.0.0"
     })
     return res.content  
@@ -321,20 +369,30 @@ def getImage(request, hydrus_id):
 def getThumbnailUrlFromId(request, id):
     if request.session['key']:
         """ This is absolutely influenced by hyshare """
-        return (getenv('HYDRUS_BASE') + 'get_files/thumbnail?id=' + str(id) + '&Hydrus-Client-API-Access-Key=' + request.session['key'])
+        return (getenv('HYDRUS_BASE') + 'get_files/thumbnail?id=' + str(id) + '&Hydrus-Client-API-Access-Key=' + HYDRUS_AUTH_KEY)
     return ""
 
 def getFileUrlFromId(request, id):
     if request.session['key']:
         """ This is absolutely influenced by hyshare """
-        return (getenv('HYDRUS_BASE') + '/get_files/file?file_id=' + str(id) + '&Hydrus-Client-API-Access-Key=' + request.session['key'])
+        return (getenv('HYDRUS_BASE') + '/get_files/file?file_id=' + str(id) + '&Hydrus-Client-API-Access-Key=' + HYDRUS_AUTH_KEY)
     return ""
 
 def getMetaDataFromHydrusById(request, id):
     if request.session['key']:
         url = getenv('HYDRUS_BASE') + '/get_files/file_metadata?file_ids=[' + str(id) + ']'
         res = requests.get(url, headers={
-            'Hydrus-Client-API-Access-Key': request.session['key'],
+            'Hydrus-Client-API-Access-Key': HYDRUS_AUTH_KEY,
+            'User-Agent': "Pydrus-Client/1.0.0"
+        })
+        data = res.json()['metadata'][0]
+        return data
+    
+def getMetaDataFromHydrusByHash(request, hash):
+    if request.session['key']:
+        url = getenv('HYDRUS_BASE') + '/get_files/file_metadata?hashes=%5b%22' + hash + '%22%5D'
+        res = requests.get(url, headers={
+            'Hydrus-Client-API-Access-Key': HYDRUS_AUTH_KEY,
             'User-Agent': "Pydrus-Client/1.0.0"
         })
         data = res.json()['metadata'][0]
@@ -350,7 +408,7 @@ def getMetaOfIds(request, *ids):
         tag_string = tag_string + "]"
         url += urllib.parse.quote(tag_string)
         res = requests.get(url, headers={
-            'Hydrus-Client-API-Access-Key': request.session['key'],
+            'Hydrus-Client-API-Access-Key': HYDRUS_AUTH_KEY,
             'User-Agent': "Pydrus-Client/1.0.0"
         })
         data = res.json()['metadata']
@@ -426,57 +484,105 @@ def create_subooru(request):
     if request.method == 'POST':
         form = SubooruForm(request.POST)
         if form.is_valid():
-            ent = form.save()
-            render(request, f"../edit/subooru?key={ent.pk}")
+            instance = form.save()
+            value = instance.pk.hex
+            return HttpResponse(f"Created a new subooru with the following hex.<br><b>{value}</b><br>Be sure to copy this key, it's how you open and edit the subooru you created")
     else:
         form = SubooruForm()
-    return render(request, 'create/subooru.html', {'form':form})
+    return render(request, 'booru/create_subooru.html', {'form':form})
 
-def edit_subooru(request):
-    key = request.GET['key']
+def add_to_booru(request):
+    #Create a new Booru_File_Pair with the booru and file for values
+    uid = request.POST.get("booru_uid")
+    hashes = request.POST.getlist("hashes")
+    existing_hashes = []
+    sub = Subooru.objects.filter(key=uid).first()
+             
+    page = request.POST.get("page")
+    if sub:
+        for file in sub.files.all():
+            existing_hashes.append(file.hash)
+        for hash in hashes:
+            if hash in existing_hashes:
+                hashes.remove(hash)
+        for hash in hashes:
+            sub.files.add(File.objects.get(hash=hash))
+        sub.save()
+    return HttpResponseRedirect(page)
+
+def add_all_to_subooru(request):
+    buid = request.POST.get("booru")
+    tags = request.POST.get("tags")
+    page = request.POST.get("page")
     
-    #TODO:
-    """
-    Display IDS and TAGS in their own sections
-    Each section should be editable
-    TAG|ID             blacklist?[]         REMOVE
-    ADD_NEW
-    """
+    sub = Subooru.objects.filter(key=buid).first()
+    if sub:    
+        tags = tags.split(',')
+        existing_hashes = []
+        for file in sub.files.all():
+            existing_hashes.append(file.hash) 
+        hashes = getHashesFromHydrus(request, *tags)
+        for hash in hashes:
+            if hash in existing_hashes:
+                hashes.remove(hash)
+        
+        files_to_add = File.objects.filter(hash__in=hashes)
+        sub.files.add(*files_to_add)
+        sub.save() 
+    return HttpResponseRedirect(page)
     
-    return HttpResponse(f"Editing Subooru {key}")
     
     
-def updateTables(key):
+def updateTables(request):
+    if request.GET.get('delete', 'false' ) == 'true':
+        File.objects.all().delete()
+    
     #get tags
-    BOORU_KEY = getenv("BOORU_KEY")
-    url = getenv('HYDRUS_BASE') + "/add_tags/search_tags?search=*"
-    res = requests.get(url, headers={
-        'Hydrus-Client-API-Access-Key': BOORU_KEY,
-        'User-Agent': "Pydrus-Client/1.0.0"
-    }) 
-    json_res = res.json()
-    for tag in json_res['tags']:
-        if Tag.objects.filter(name=tag['value']).first() == None:
-            print(f"Adding tag {tag}\r", end='')
-            TagModel = Tag(name=tag['value'], count=tag['count'])
-            TagModel.save()
-        else:
-            print(f"Tag {tag} already in DB\t\t\t\t\r", end='')
+    # We're only going to worry about the actual files for now, tags MAY come later
+    # url = getenv('HYDRUS_BASE') + "/add_tags/search_tags?search=*"
+    # res = requests.get(url, headers={
+    #     'Hydrus-Client-API-Access-Key': HYDRUS_AUTH_KEY,
+    #     'User-Agent': "Pydrus-Client/1.0.0"
+    # }) 
+    # json_res = res.json()
+    # for tag in json_res['tags']:
+    #     tagEntry = Tag.objects.filter(name=tag['value']).first()
+    #     if tagEntry == None:
+    #         print(f"Adding tag {tag}\r", end='')
+    #         TagModel = Tag(name=tag['value'], count=tag['count'])
+    #         TagModel.save()
+    #     else:
+    #         if tagEntry.count != tag['count']:
+    #             tagEntry.count = tag['count']
+    #             tagEntry.save()
+    #             print("Updated count of tag", tagEntry)
+    #         else:
+    #             print(f"Tag {tag} already in DB\t\t\t\t\r", end='')
         
     url = getenv('HYDRUS_BASE') + "/get_files/search_files?return_hashes=true"
     res = requests.get(url, headers={
-        'Hydrus-Client-API-Access-Key': BOORU_KEY,
+        'Hydrus-Client-API-Access-Key': HYDRUS_AUTH_KEY,
         'User-Agent': "Pydrus-Client/1.0.0",
     }) 
-    json_res = res.json()
-    #get files/hashes
-    for file_hash in json_res['hashes']:
-        if File.objects.filter(hash=file_hash).first() == None:
-            FileModel = File(hash=file_hash)
+    hash_json_res = res.json()
+    url = getenv('HYDRUS_BASE') + "/get_files/search_files"
+    res = requests.get(url, headers={
+        'Hydrus-Client-API-Access-Key': HYDRUS_AUTH_KEY,
+        'User-Agent': "Pydrus-Client/1.0.0",
+    }) 
+    id_json_res = res.json()
+    json_res = zip(hash_json_res['hashes'], id_json_res['file_ids'])
+    files = File.objects.values_list('hash', 'id')
+    iter = 1
+    total = len(id_json_res['file_ids'])
+    for file_hash, file_id in json_res:
+        print(f"Processing file {iter}  of  {total}\r", end="")
+        if (file_hash, file_id) not in files:
+            FileModel = File(hash=file_hash, id=file_id)
             FileModel.save()
-            print(f"Adding hash {file_hash} to DB\r", end='')
-        else:
-            print(f'Hash {file_hash} already in DB\r', end='')
+        iter += 1
+    
+    return HttpResponseRedirect('/')
             
 def getTagsOfIds(request, *ids):
     #poll hydrus for all these ids, then compile a list of all their tags

@@ -1,12 +1,7 @@
+import uuid
 from django.db import models
 
 # Create your models here.
-class Subooru(models.Model):
-    key = models.AutoField(primary_key=True)
-    name = models.CharField(max_length=100)
-    
-    def __str__(self):
-        return self.name
     
 class Tag(models.Model):
     key = models.AutoField(primary_key=True)
@@ -18,19 +13,16 @@ class Tag(models.Model):
 
 class File(models.Model):
     key = models.AutoField(primary_key=True)
+    id = models.IntegerField(null=True)
     hash = models.CharField(max_length=256)
     
     def __str__(self):
         return self.hash
     
-class Booru_File_Pair(models.Model):
-    key = models.AutoField(primary_key=True)
-    blacklist = models.BooleanField(default=False)
-    booru_key = models.ForeignKey(Subooru, on_delete=models.CASCADE)
-    file_key = models.ForeignKey(File, on_delete=models.CASCADE)
-    
-class Booru_Tag_Pair(models.Model):
-    key = models.AutoField(primary_key=True)
-    blacklist = models.BooleanField(default=False)
-    booru_key = models.ForeignKey(Subooru, on_delete=models.CASCADE)
-    tag_key = models.ForeignKey(Tag, on_delete=models.CASCADE)
+class Subooru(models.Model):
+    key = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    name = models.CharField(max_length=100)
+    files = models.ManyToManyField(File, blank=True, null=True, related_name="files")
+        
+    def __str__(self):
+        return self.name

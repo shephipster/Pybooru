@@ -1,8 +1,3 @@
-Completed: Take tags and get id(s) of all files that have those tags
-Paginated results
-
 TODO:
-    get the thumbnails for the files on the page OR get the uri/path from hydrus
-    display thumbnails
-    make each image a link
-    /booru/file/id -> The full file from hydrus
+    confirm pagination
+    loading pages seems to be slower if there's a lot a results, but pagination should cause constant load times. Identify this slowdown and remedy it

@@ -4,6 +4,34 @@
 <!--[if IE 8]>         <html class="no-js lt-ie9"> <![endif]-->
 <!--[if gt IE 8]>      <html class="no-js"> <!--<![endif]-->
 <style>
+  .modal {
+    display: none;
+    position: fixed;
+    z-index: 3;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgb(0,0,0);
+    background-color: rgba(0,0,0,0.4);
+  }
+
+  .modal-content {
+    background-color: #fefefe;
+    margin: 15% auto; /* 15% from the top and centered */
+    padding: 20px;
+    border: 1px solid #888;
+    width: 80%; /* Could be more or less, depending on screen size */
+  }
+
+  .close {
+    color: #aaa;
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+  }
+
   .thumbnail-grid{
     display: flex;
     justify-content: center;
@@ -44,21 +72,51 @@
         <title>Shepbooru: {{tag_string}}</title>
         <meta name="description" content="">
         <meta name="viewport" content="width=device-width, initial-scale=1">
+        
     </head>
     <body>
       <form method="GET" action="search">
         <input type="text" name="tags" >
         <input type="text" name="page" value="{{page}}" hidden="true">
-        <button type="submit" value="SUBMIT">Search</button
+        <button type="submit" value="SUBMIT">Search</button>
       </form>
       {% if total != 0 %}
         {% if tag_string == "" %}
           <b>{{ total }}</b> file(s) found
         {% else %}
         Found <b>{{ total }}</b> file(s) with the tags: <b>{{tag_string}}</b>
-        <br> Raw tags are {{raw_tags}}<br>
+        {% comment %} <br> Raw tags are {{raw_tags}}<br> {% endcomment %}
         {%endif%}
+        <br>
+        {% if canAddToSubooru %}
+        {% comment %} <button id="addButton">Add page</button> {% endcomment %}
+        <form method="POST" action="add_all_to_subooru">
+          {%csrf_token %}
+          Booru: <input type="text" name="booru">
+          <input type="hidden" name="tags" value="{{raw_tags}}">
+          <input type="hidden" name="page" value="/booru/search?tags={{raw_tags}}&page_size={{page_size}}&page={{page_obj.number}}">
+          <button type="submit" value="SUBMIT">Add all</button>
+        </form>
+        <div id="addModal" class="modal">
+          <div class="modal-content">
+            <span class="close">&times;</span>
+            <form method="POST" action="add_to_booru">
+              {% csrf_token %}
+              Booru UID: <input type="text" name="booru_uid" >
+              <select size="10" multiple name="hashes">
+                {%for file in data%}
+                  <option value={{file.hash}}> {{file.id}} </option>
+                {%endfor%}
+              </select>
+              <input type="hidden" name="page" value="/booru/search?tags={{raw_tags}}&page_size={{page_size}}&page={{page_obj.number}}">
+              <button type="submit" value="SUBMIT">Add</button>
+            </form>
+          </div>
+        </div>
+
+        {% endif %}
         
+
         <hr>
             <center><h1 class="text-4xl mb-4 font-bold">{{ title }}</h1></center>
             <div class="thumbnail-grid">
@@ -87,11 +145,29 @@
         <div align='center'>
           {% include "booru/pagination.html" with tags=raw_tags page=page%}
         </div>
+
         <script type="text/javascript">
-          $(window).on('load', function(){
-            $("#cover").hide();
-          });
+
+          var modal = document.getElementById("addModal");
+          var btn = document.getElementById("addButton");
+          var span = document.getElementsByClassName("close")[0]
+
+          btn.onclick = function(){
+            modal.style.display = "block";
+          }
+
+          span.onclick = function(){
+            modal.style.display = "none";
+          }
+
+          window.onclick = function(event){
+            if (event.target == modal){
+              modal.style.display = "none";
+            }
+          }
+
         </script>
+        
     </body>
     {% endif %}
     {% if total == 0%}
