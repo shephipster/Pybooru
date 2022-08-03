@@ -90,6 +90,7 @@
         <br>
         {% if canAddToSubooru %}
         {% comment %} <button id="addButton">Add page</button> {% endcomment %}
+
         <form method="POST" action="add_all_to_subooru">
           {%csrf_token %}
           Booru: <input type="text" name="booru">
@@ -97,6 +98,16 @@
           <input type="hidden" name="page" value="/booru/search?tags={{raw_tags}}&page_size={{page_size}}&page={{page_obj.number}}">
           <button type="submit" value="SUBMIT">Add all</button>
         </form>
+        <br>
+
+        <form method="POST" action="create_from_search">
+          {%csrf_token %}
+          Name for Subooru: <input type="text" name="name">
+          <input type="hidden" name="tags" value="{{raw_tags}}">
+          <input type="hidden" name="page" value="/booru/search?tags={{raw_tags}}&page_size={{page_size}}&page={{page_obj.number}}">
+          <button type="submit" value="SUBMIT">Create Sub</button>
+        </form>
+
         <div id="addModal" class="modal">
           <div class="modal-content">
             <span class="close">&times;</span>

@@ -4,16 +4,15 @@
         width: 100%;
         height: 100%;
     }
-    video{
+    video {
         object-fit: contain;
         width: 100%;
         height: 100%;
     }
 </style>
 <div class="display">
-    <a href="full/{{id}}">
+    <a href="full/{{id}}?tags={{raw_tags}}">
     {% if fileType == 0 %}
-    
         <img 
             src="/image/{{id}}"
             height={{height}}
@@ -36,12 +35,12 @@
     {%endif%}
 
     {% if fileType == 2 %}
-    <audio 
-        src="/image/{{id}}"
-        type={{mime}}
-    >
+    <div align="center">
+    <audio controls> 
+        <source src="/image/{{id}}" type={{mime}} />
         Audio not supported by your browser.
     </audio>
+    </div>
     {%endif%}
 
     {% if fileType == 3 %}

@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html>
+    <style>
+        .display {  
+            display: block;
+            flex: 70%;
+            z-index:10;
+            width: 85vh;
+            justify: center;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        .tags{
+            display: grid;
+            grid-template-columns: repeat(8, auto);
+            padding: 10px;
+        }
+        .urls{
+            display: grid;
+            grid-template-columns: repeat(1, auto);
+            padding: 10px;
+        }
+        .move_buttons{
+            display: grid;
+            grid-template-columns: repeat(3, auto);
+            justify-content: space-between;
+        }
+        .shareButtons{
+            display:grid;
+            grid-template(1, auto);
+            justify-content: space-between;
+        }
+    </style>
+    
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <title>{{title}}</title>
+        <meta content="{{title}}" property="og:title" key="title" />
+        <meta property="og:site_name" content="Shepbooru" />
+        <meta name="og:description" content="Shepbooru - Hydrus sharing site" />
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content="https://shephipster.ddns.net/" />
+        {% comment %} <meta name="viewport" content="width=device-width, initial-scale=1" /> {% endcomment %}
+
+        {% if type == 0 %}
+            <meta property="og:image" content="/image/{{id}}" />
+        {% elif type == 1 %}
+            <meta property="og:video" content="/image/{{id}}"/>
+            <meta property="og:video:type" content={{mime}} />
+            <meta property="twitter:card" content="summary_large_image" />
+            <meta property="twitter:player" content="/image/{{id}}"/>
+
+            <meta property="og:type" content="video.other">
+            <meta property="og:video:type" content="text/html">
+        {% elif type == 2 %}
+            <meta property="og:audio" content="/image/{{id}}" type={{mime}}/>
+            <meta property="og:audio:type" content={{mime}} />
+        {% endif %}
+
+        <meta name="theme-color" content="#352555" />
+
+
+    </head>
+    <body>
+
+        <center>
+            <a>
+                <h1>{{title}}</h1>
+            </a>
+        </center>
+
+        <div class="display">
+            {% include "booru/view-file.html" with fileType=type mime=mime id=id height=height width=width title=title%}
+            <div class="move_buttons">
+                
+                    <div class="cycle_buttons">
+                    </div>
+
+                    <div class="shareButtons">
+                        <button onclick="copyToClipboard()">Share</button>
+                        <input type="text" id="shareLink" value="http://shephipster.ddns.net/embed/{{id}}">         
+                    </div>
+                
+                    <div class="next_button">
+
+                    </div>
+
+            </div>
+        </div>
+
+        <center><div>
+            <h2>Tags:</h2>
+            <div class="tags">
+                {% for tag in tags %}
+                <a style="text-decoration: none"><font size="3"
+                    {% if tag.1 == 0 %}
+                        color="#000000"
+                    {% elif tag.1 == 1 %}
+                        color="#22dd22"
+                    {% elif tag.1 == 2 %}
+                        color="#ff00ff"
+                    {% elif tag.1 == 3 %}
+                        color="#ff0000"
+                    {% elif tag.1 == 4%}
+                        color="#bb44aa"
+                    {%endif%}
+                >{{tag.0}}</font></a><br>
+                {% endfor %}
+            </div>
+            <h2>Urls:</h2>
+            <div class="urls">
+                {% for url in urls %}
+                <a href="{{url}}"><font size="3">{{url}}</font></a><br>
+                {% endfor %} 
+            </div>
+        </div></center>
+    </body>
+</html>

@@ -27,7 +27,6 @@
             <a href="../{{id}}?tags={{tags}}">
             {% comment %} Django doesn't do switches apparently, so that's a bummer. Need to go yanderedev for this {% endcomment %}
             {% if fileType == 0 %}
-            
                 <img 
                     src="/image/{{id}}"
                     height={{height}}
@@ -50,12 +49,8 @@
             {%endif%}
         
             {% if fileType == 2 %}
-            <audio 
-                src="/image/{{id}}"
-                type={{mime}}
-            >
-                Audio not supported by your browser.
-            </audio>
+            Type: {{mime}}
+            <audio controls><source src="/image/{{id}}" type={{mime}}></audio>
             {%endif%}
         
             {% if fileType == 3 %}

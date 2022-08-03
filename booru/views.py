@@ -1,4 +1,4 @@
-from django.http import HttpResponse, HttpResponseRedirect
+from django.http import HttpResponse, HttpResponseRedirect, JsonResponse
 from django.shortcuts import render
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from os import getenv
@@ -34,6 +34,7 @@ def authorize(request):
             if subooru:
                 request.session['booru_key'] = booru_key
                 request.session['type'] = "SUB"
+                request.session['key'] = True
                 return HttpResponseRedirect('../booru')
             else:
                 return HttpResponseRedirect('/')
@@ -66,6 +67,7 @@ def view(request, id):
     raw_tags = request.GET['tags']
     tags = raw_tags.split(',')
     title = ""
+    url_tags = raw_tags.replace(" ", "%20")
         
     for i in range(0, len(tags)):
         tags[i] = "\"" + str.strip(tags[i]) + "\"" 
@@ -113,6 +115,7 @@ def view(request, id):
     return render(request, 'booru/display.html', {
         'id': id,
         'raw_tags': raw_tags,
+        'url_tags': url_tags,
         'tags':tags,
         'urls': urls,
         'type': file_type,
@@ -127,7 +130,7 @@ def view(request, id):
     
 # view/full/<id>
 def fullImage(request, id):
-    tags = request.GET['tags']
+    tags = request.GET.get("tags", None)
     fileData = getMetaDataFromHydrusById(request, id)
     file_type = getFileType(fileData['mime'])
     if len(fileData['service_names_to_statuses_to_tags']) != 0:
@@ -210,6 +213,9 @@ def search(request):
                     previousResult = file_ids[-1]
                 else:
                     previousResult = file_ids[index - 1]
+            else:
+                nextResult = file_ids[0]
+                previousResult = file_ids[0]
                     
             file_data.append(
                 {
@@ -322,7 +328,7 @@ def tagsToHydrusString(*tags):
 
 #TODO: need to handle siblings. For example, "rating:e" returns nothing because it's got the sibling "rating:explicit"
 def getIdsFromHydrus(request, *tags) -> list:
-    if request.session['key']:
+    if 'key' in request.session:
         url = getenv('HYDRUS_BASE') + "/get_files/search_files?tags="
         url += tagsToHydrusString(*tags)
         res = requests.get(url, headers={
@@ -378,8 +384,8 @@ def getFileUrlFromId(request, id):
         return (getenv('HYDRUS_BASE') + '/get_files/file?file_id=' + str(id) + '&Hydrus-Client-API-Access-Key=' + HYDRUS_AUTH_KEY)
     return ""
 
-def getMetaDataFromHydrusById(request, id):
-    if request.session['key']:
+def getMetaDataFromHydrusById(request, id, embed=False):      
+    if 'key' in request.session or embed == True:
         url = getenv('HYDRUS_BASE') + '/get_files/file_metadata?file_ids=[' + str(id) + ']'
         res = requests.get(url, headers={
             'Hydrus-Client-API-Access-Key': HYDRUS_AUTH_KEY,
@@ -417,7 +423,6 @@ def getMetaOfIds(request, *ids):
 def cleanTags(*tags:str):
     """ Take a list of tags and remove certain ones that aren't important for the booru.
     Namely, removes meta:* , booru:*, filename:*, and source:* """
-    
     """ Tags are tupled
         Tag[0] = the actual string of the tag
         Tag[1] = the type of tag, broken down as follows
@@ -514,6 +519,7 @@ def add_all_to_subooru(request):
     buid = request.POST.get("booru")
     tags = request.POST.get("tags")
     page = request.POST.get("page")
+    CHUNK_SIZE = 500
     
     sub = Subooru.objects.filter(key=buid).first()
     if sub:    
@@ -527,11 +533,44 @@ def add_all_to_subooru(request):
                 hashes.remove(hash)
         
         files_to_add = File.objects.filter(hash__in=hashes)
-        sub.files.add(*files_to_add)
-        sub.save() 
+        #Chunking the queries due to overloads
+        for i in range(0, len(hashes), CHUNK_SIZE):
+            chunk = hashes[i:i+CHUNK_SIZE]
+            files_to_add = File.objects.filter(hash__in=chunk)
+            sub.files.add(*files_to_add)
+            sub.save()
     return HttpResponseRedirect(page)
     
+def create_booru_from_results(request):
+    CHUNK_SIZE = 500
+    #generate a new booru
+    instance = Subooru.objects.create(name=request.POST.get("name"))
+    #get the pk
+    instance.save()
+    buid = instance.key.hex
     
+    tags = request.POST.get("tags")
+    page = request.POST.get("page")
+    
+    sub = Subooru.objects.filter(key=buid).first()
+    if sub:    
+        tags = tags.split(',')
+        existing_hashes = []
+        for file in sub.files.all():
+            existing_hashes.append(file.hash) 
+        hashes = getHashesFromHydrus(request, *tags)
+        for hash in hashes:
+            if hash in existing_hashes:
+                hashes.remove(hash)
+        
+        #Chunking the queries due to overloads
+        for i in range(0, len(hashes), CHUNK_SIZE):
+            chunk = hashes[i:i+CHUNK_SIZE]
+            files_to_add = File.objects.filter(hash__in=chunk)
+            sub.files.add(*files_to_add)
+            sub.save()
+    return HttpResponse(f"Created a new subooru with the following hex.<br><b>{buid}</b><br>Be sure to copy this key, it's how you open and edit the subooru you created")
+
     
 def updateTables(request):
     if request.GET.get('delete', 'false' ) == 'true':
@@ -559,6 +598,27 @@ def updateTables(request):
     #         else:
     #             print(f"Tag {tag} already in DB\t\t\t\t\r", end='')
         
+    iters = json_generator()
+    url = getenv('HYDRUS_BASE') + "/get_files/search_files"
+    res = requests.get(url, headers={
+        'Hydrus-Client-API-Access-Key': HYDRUS_AUTH_KEY,
+        'User-Agent': "Pydrus-Client/1.0.0",
+    }) 
+    id_json_res = res.json()
+    del url, res
+    files = File.objects.values_list('hash', 'id')
+    iter = 1
+    total = len(id_json_res['file_ids'])
+    for file_hash, file_id in iters:
+        print(f"Processing file {iter}  of  {total}\r", end="")
+        if (file_hash, file_id) not in files:
+            FileModel = File(hash=file_hash, id=file_id)
+            FileModel.save()
+        iter += 1
+    
+    return HttpResponseRedirect('/')
+
+def json_generator():
     url = getenv('HYDRUS_BASE') + "/get_files/search_files?return_hashes=true"
     res = requests.get(url, headers={
         'Hydrus-Client-API-Access-Key': HYDRUS_AUTH_KEY,
@@ -572,17 +632,9 @@ def updateTables(request):
     }) 
     id_json_res = res.json()
     json_res = zip(hash_json_res['hashes'], id_json_res['file_ids'])
-    files = File.objects.values_list('hash', 'id')
-    iter = 1
-    total = len(id_json_res['file_ids'])
-    for file_hash, file_id in json_res:
-        print(f"Processing file {iter}  of  {total}\r", end="")
-        if (file_hash, file_id) not in files:
-            FileModel = File(hash=file_hash, id=file_id)
-            FileModel.save()
-        iter += 1
+    for hash, id in json_res:
+        yield hash, id
     
-    return HttpResponseRedirect('/')
             
 def getTagsOfIds(request, *ids):
     #poll hydrus for all these ids, then compile a list of all their tags
@@ -599,4 +651,76 @@ def getTagsOfIds(request, *ids):
                 else:
                     tagDict[tag] = 1
     
-    return sorted(tagDict)[0:25]
+    return sorted(tagDict)[0:25]    
+
+def embedLink(request, id):
+    raw_tags = request.GET['tags']
+    tags = raw_tags.split(',')
+    title = ""
+        
+    for i in range(0, len(tags)):
+        tags[i] = "\"" + str.strip(tags[i]) + "\"" 
+
+
+    fileData = getMetaDataFromHydrusById(request, id, embed=True)
+    """ 
+    This has a small issue of displaying siblings, which we can't look up. So if something is tagged "rating: mature" 
+    then we get both "rating: mature" and "rating: explicit", but if "rating:mature" is the one that's replaced (by "explicit")
+    then clicking the tag will cause an empty search. Need a way to get the master-tag or to do a "or" search of all siblings
+    """
+    if len(fileData['service_names_to_statuses_to_tags']) != 0:
+        tags, title = cleanTags(*fileData['service_names_to_statuses_to_tags']['all known tags']['0'])
+    else:
+        tags, title = [],"Shepbooru"
+    urls = fileData['known_urls']
+    file_type = getFileType(fileData['mime'])
+    height = 0
+    width = 0
+    if fileData['height']:
+        height = fileData['height']
+    if fileData['width']:
+        width = fileData['width']
+        
+    is_direct_embed = request.GET.get('is_embed', False)
+    is_meta = request.GET.get('meta', False)
+    if is_direct_embed:
+        return HttpResponse(getImage(request, id))
+    elif is_meta:
+        fileData['title'] = title
+        return JsonResponse(fileData)
+    else:
+        return render(request, 'booru/embed.html', {
+            'id': id,
+            'raw_tags': raw_tags,
+            'tags':tags,
+            'urls': urls,
+            'type': file_type,
+            'mime': fileData['mime'],
+            'height': height,
+            'width': width,
+            'title': title,
+        })
+    
+def embedFullImage(request, id):
+    tags = request.GET['tags']
+    fileData = getMetaDataFromHydrusById(request, id)
+    file_type = getFileType(fileData['mime'])
+    if len(fileData['service_names_to_statuses_to_tags']) != 0:
+        title = cleanTags(*fileData['service_names_to_statuses_to_tags']['all known tags']['0'])[1]
+    else:
+        title = "Shepbooru"
+    height = 0
+    width = 0
+    if fileData['height']:
+        height = fileData['height']
+    if fileData['width']:
+        width = fileData['width']
+    return render(request, 'booru/image-only.html', {
+        'id': id,
+        'fileType': file_type,
+        'mime': fileData['mime'],
+        'height': height,
+        'width': width,
+        'title': title,
+        'tags': tags
+    })

@@ -26,7 +26,12 @@
         }
         .move_buttons{
             display: grid;
-            grid-template-columns: repeat(2, auto);
+            grid-template-columns: repeat(3, auto);
+            justify-content: space-between;
+        }
+        .shareButtons{
+            display:grid;
+            grid-template(1, auto);
             justify-content: space-between;
         }
     </style>
@@ -35,8 +40,13 @@
         <meta charset="utf-8">
         <meta http-equiv="X-UA-Compatible" content="IE=edge">
         <title>{{title}}</title>
-        <meta name="description" content="">
+        <meta name="description" content="Shepbooru - A pet project for sharing Hydrus resources.">
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content="https://shephipster.ddns.net/" />
         <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta content="{{title}}" property="og:title">
+        <meta property="og:image" content="/image/{{id}}">
+
     </head>
     <body>
 
@@ -50,14 +60,8 @@
             {%endif%}
         </center>
 
-        
-
-        
-
         <div class="display">
-            
-
-            {% include "booru/view-file.html" with fileType=type mime=mime id=id height=height width=width title=title%}
+            {% include "booru/view-file.html" with fileType=type mime=mime id=id height=height width=width title=title tags=raw_tags%}
             <div class="move_buttons">
                 {%if canCycle %}
                     <div class="cycle_buttons">
@@ -69,6 +73,11 @@
                             </a>
                         </div>
                     </div>
+
+                    <div class="shareButtons">
+                        <button onclick="copyToClipboard()">Share</button>
+                        <input type="text" id="shareLink" value="http://shephipster.ddns.net/embed/{{id}}?tags={{url_tags}}">         
+                    </div>
                 
                     <div class="next_button">
                         <a href="{{nextPost}}?tags={{raw_tags}}">
@@ -79,11 +88,7 @@
                     </div>
                 {%endif%}
             </div>
-
-
         </div>
-
-        
 
         <center><div>
             <h2>Tags:</h2>
@@ -127,6 +132,15 @@
                 window.location.href = '{{nextPost}}?tags={{raw_tags}}'
                };
             };
-        };    
+        };   
+        
+        function copyToClipboard() {
+            var copyText = document.getElementById("shareLink").value;
+            if (navigator.clipboard == undefined){
+                alert("Clipboard not available. Please manually copy the link");
+            } else {
+                navigator.clipboard.writeText(copyText.value);
+            }
+        }
       </script>
 </html>
