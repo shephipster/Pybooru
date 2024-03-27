@@ -1,6 +1,7 @@
 from django.http import HttpResponse, HttpResponseRedirect
 from django.shortcuts import render
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
+from django.conf import settings
 from os import getenv
 import urllib
 import requests
@@ -36,7 +37,7 @@ def image(request, id):
 # /view/<id>
 def view(request, id):
     fileData = getMetaDataFromHydrusById(request, id)
-    tags, title = cleanTags(*fileData['service_names_to_statuses_to_tags']['all known tags']['0'])
+    tags, title = cleanTags(*fileData['tags'][settings.ALL_KNOWN_TAGS_CODE]['storage_tags']['0'])
     urls = fileData['known_urls']
     file_type = getFileType(fileData['mime'])
     height = 0
@@ -91,7 +92,7 @@ def search(request):
         
         # Figuring out what is okay and what is not
 
-        for id in file_ids:            
+        for id in getIdsFromHydrusGenerator(request, *tags):            
             meta = getMetaDataFromHydrusById(request, id)
             file_data.append(
                 {
@@ -200,6 +201,25 @@ def getIdsFromHydrus(request, *tags):
         })
         ids = res.json()['file_ids']
         return ids
+    
+def getIdsFromHydrusGenerator(request, *tags):
+    if request.session['key']:
+        url = getenv('HYDRUS_BASE') + "/get_files/search_files?tags="
+        
+        #TODO: Limit the size of the query by doing a range to Hydrus
+        # need to know how to tell hydrus to skip first X items
+        index = 0
+        page_size = 100
+        
+        url += tagsToHydrusString(*tags)
+        res = requests.get(url, headers={
+            'Hydrus-Client-API-Access-Key': request.session['key'],
+            'User-Agent': "Pydrus-Client/1.0.0"
+        })
+        ids = res.json()['file_ids']
+        
+        for id in ids:
+            yield id
 
 def getThumbnail(request, hydrus_id):
     url = getenv('HYDRUS_BASE') + "/get_files/thumbnail?file_id=" + str(hydrus_id)
