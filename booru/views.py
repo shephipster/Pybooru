@@ -1,6 +1,7 @@
 from django.http import HttpResponse, HttpResponseRedirect, JsonResponse
 from django.shortcuts import render
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
+from django.conf import settings
 from os import getenv
 from .forms import *
 from .models import *
@@ -11,13 +12,22 @@ import requests
 HYDRUS_AUTH_KEY = getenv('HYDRUS_KEY')
 FULL_BOORU_KEY = getenv('FULL_BOORU_KEY')
 HYDRUS_BASE = getenv('HYDRUS_BASE')
+
+FORCE_AUTH = getenv('FORCE_AUTH').lower() in ['t','true','yes','y','1']
 #PAGE_SIZES = 30 #how many items to show per page
 
 #Inspiration from https://github.com/floogulinc/hyshare/blob/master/src/
 
 # Create your views here.
 def home(request):
-    return render(request, 'home/home.html')
+    if FORCE_AUTH:
+        return render(request, 'home/home.html')
+    
+    # If we want to make the whole thing public then just give full access by default
+    request.session['booru_key'] = FULL_BOORU_KEY
+    request.session['type'] = "FULL"
+    request.session['key'] = True
+    return HttpResponseRedirect('../booru')
 
 def authorize(request):
     if request.method == "POST":
@@ -100,8 +110,8 @@ def view(request, id):
     then we get both "rating: mature" and "rating: explicit", but if "rating:mature" is the one that's replaced (by "explicit")
     then clicking the tag will cause an empty search. Need a way to get the master-tag or to do a "or" search of all siblings
     """
-    if len(fileData['service_names_to_statuses_to_tags']) != 0:
-        tags, title = cleanTags(*fileData['service_names_to_statuses_to_tags']['all known tags']['0'])
+    if len(fileData['tags'][settings.ALL_KNOWN_TAGS_CODE]['storage_tags']['0']) != 0:
+        tags, title = cleanTags(*fileData['tags'][settings.ALL_KNOWN_TAGS_CODE]['storage_tags']['0'])
     else:
         tags, title = [],"Shepbooru"
     urls = fileData['known_urls']
@@ -133,8 +143,8 @@ def fullImage(request, id):
     tags = request.GET.get("tags", None)
     fileData = getMetaDataFromHydrusById(request, id)
     file_type = getFileType(fileData['mime'])
-    if len(fileData['service_names_to_statuses_to_tags']) != 0:
-        title = cleanTags(*fileData['service_names_to_statuses_to_tags']['all known tags']['0'])[1]
+    if len(fileData['tags'][settings.ALL_KNOWN_TAGS_CODE]['storage_tags']['0']) != 0:
+        title = cleanTags(*fileData['tags'][settings.ALL_KNOWN_TAGS_CODE]['storage_tags']['0'])[1]
     else:
         title = "Shepbooru"
     height = 0
@@ -199,15 +209,19 @@ def search(request):
         else:
            display_hashes = file_hashes
            display_ids = file_ids 
-                
-        for index, id in enumerate(display_ids[page_start:page_end]):  
-            meta = getMetaDataFromHydrusById(request, id)
-            
+           
+        dataset = getMetaDataFromHydrusById(request, display_ids[page_start:page_end])
+        if not isinstance(dataset, list):
+            dataset = [dataset]
+        for index, data in enumerate(dataset):
             if canCycle:
                 if id == file_ids[-1]:
                     nextResult = file_ids[0]
                 else:
-                    nextResult = file_ids[index + 1]
+                    try:
+                        nextResult = file_ids[index + 1]
+                    except:
+                        nextResult = file_ids[0]
                     
                 if id == file_ids[0]:
                     previousResult = file_ids[-1]
@@ -216,17 +230,45 @@ def search(request):
             else:
                 nextResult = file_ids[0]
                 previousResult = file_ids[0]
-                    
+                
             file_data.append(
                 {
-                    'id': id,
+                    'id': data['file_id'],
                     'hash': display_hashes[index],
-                    'isVideo': isAnimated(meta['mime']),
-                    'hasAudio': meta['has_audio'],
+                    'isVideo': isAnimated(data['mime']),
+                    'hasAudio': data['has_audio'],
                     'canCycle': canCycle,
                     'nextResult': nextResult,
                     'previousResult': previousResult                                        
                 })
+                
+        # for index, id in enumerate(display_ids[page_start:page_end]):  
+        #     meta = getMetaDataFromHydrusById(request, id)
+            
+        #     if canCycle:
+        #         if id == file_ids[-1]:
+        #             nextResult = file_ids[0]
+        #         else:
+        #             nextResult = file_ids[index + 1]
+                    
+        #         if id == file_ids[0]:
+        #             previousResult = file_ids[-1]
+        #         else:
+        #             previousResult = file_ids[index - 1]
+        #     else:
+        #         nextResult = file_ids[0]
+        #         previousResult = file_ids[0]
+                    
+        #     file_data.append(
+        #         {
+        #             'id': id,
+        #             'hash': display_hashes[index],
+        #             'isVideo': isAnimated(meta['mime']),
+        #             'hasAudio': meta['has_audio'],
+        #             'canCycle': canCycle,
+        #             'nextResult': nextResult,
+        #             'previousResult': previousResult                                        
+        #         })
 
 
         #pagination        
@@ -315,14 +357,24 @@ def getFileType(mimeType:str):
     return switcher.get(mimeType, 99)
 
 def tagsToHydrusString(*tags):
-    tag_string = "["
+    updated_tags = []
     for tag in tags:
+        if tag == "":
+            continue
         if not tag.startswith('\"'):
-            tag_string += '\"' + tag + "\","
-        else:
-            tag_string += tag + ","
-    tag_string = tag_string[:-1]
-    tag_string = tag_string + ",\"system:archive\"]"
+            tag += '\"'
+        if '_' in tag:
+            tag = f"[{tag}, {tag.replace('_',' ')}]"
+        elif ' ' in tag:
+             tag = f"[{tag}, {tag.replace(' ','_')}]"
+        updated_tags.append(tag)
+    
+    tag_string = "[" + ','.join(updated_tags)
+    
+    # tag_string = tag_string[:-1] if tag_string != '[' else tag_string
+    if tag_string != "[":
+        tag_string = tag_string + ","
+    tag_string += "\"system:archive\"]"
     url = urllib.parse.quote(tag_string)
     return url
 
@@ -384,15 +436,20 @@ def getFileUrlFromId(request, id):
         return (getenv('HYDRUS_BASE') + '/get_files/file?file_id=' + str(id) + '&Hydrus-Client-API-Access-Key=' + HYDRUS_AUTH_KEY)
     return ""
 
-def getMetaDataFromHydrusById(request, id, embed=False):      
+def getMetaDataFromHydrusById(request, ids:list, embed=False):
+    
+    if not isinstance(ids, list):
+        ids = [ids]
+          
     if 'key' in request.session or embed == True:
-        url = getenv('HYDRUS_BASE') + '/get_files/file_metadata?file_ids=[' + str(id) + ']'
+        url = getenv('HYDRUS_BASE') + '/get_files/file_metadata?file_ids=[' + ','.join(str(x) for x in ids) + ']'
         res = requests.get(url, headers={
             'Hydrus-Client-API-Access-Key': HYDRUS_AUTH_KEY,
             'User-Agent': "Pydrus-Client/1.0.0"
         })
-        data = res.json()['metadata'][0]
-        return data
+        data = res.json()['metadata']
+        return data if len(ids) > 1 else data[0]
+    
     
 def getMetaDataFromHydrusByHash(request, hash):
     if request.session['key']:
@@ -599,7 +656,8 @@ def updateTables(request):
     #             print(f"Tag {tag} already in DB\t\t\t\t\r", end='')
         
     iters = json_generator()
-    url = getenv('HYDRUS_BASE') + "/get_files/search_files"
+    tag_string = tagsToHydrusString()
+    url = getenv('HYDRUS_BASE') + "/get_files/search_files?tags=%5B" + tag_string[3:]
     res = requests.get(url, headers={
         'Hydrus-Client-API-Access-Key': HYDRUS_AUTH_KEY,
         'User-Agent': "Pydrus-Client/1.0.0",
@@ -619,13 +677,14 @@ def updateTables(request):
     return HttpResponseRedirect('/')
 
 def json_generator():
-    url = getenv('HYDRUS_BASE') + "/get_files/search_files?return_hashes=true"
+    tag_string = tagsToHydrusString()
+    url = getenv('HYDRUS_BASE') + "/get_files/search_files?return_hashes=true&tags=%5B" + tag_string[3:]
     res = requests.get(url, headers={
         'Hydrus-Client-API-Access-Key': HYDRUS_AUTH_KEY,
         'User-Agent': "Pydrus-Client/1.0.0",
     }) 
     hash_json_res = res.json()
-    url = getenv('HYDRUS_BASE') + "/get_files/search_files"
+    url = getenv('HYDRUS_BASE') + "/get_files/search_files?tags=%5B" + tag_string[3:]
     res = requests.get(url, headers={
         'Hydrus-Client-API-Access-Key': HYDRUS_AUTH_KEY,
         'User-Agent': "Pydrus-Client/1.0.0",
@@ -642,7 +701,7 @@ def getTagsOfIds(request, *ids):
     for id in ids:
         fileData = getMetaDataFromHydrusById(request, id)
         if len(fileData['service_names_to_statuses_to_tags']) != 0:
-            tags = fileData['service_names_to_statuses_to_tags']['all known tags']['0']
+            tags = fileData['tags'][settings.ALL_KNOWN_TAGS_CODE]['storage_tags']['0']
             tags = cleanTags(*tags)[0]
             for tag in tags:
                 if tagDict.get(tag) != None:
@@ -669,7 +728,7 @@ def embedLink(request, id):
     then clicking the tag will cause an empty search. Need a way to get the master-tag or to do a "or" search of all siblings
     """
     if len(fileData['service_names_to_statuses_to_tags']) != 0:
-        tags, title = cleanTags(*fileData['service_names_to_statuses_to_tags']['all known tags']['0'])
+        tags, title = cleanTags(*fileData['tags'][settings.ALL_KNOWN_TAGS_CODE]['storage_tags']['0'])
     else:
         tags, title = [],"Shepbooru"
     urls = fileData['known_urls']
@@ -706,7 +765,7 @@ def embedFullImage(request, id):
     fileData = getMetaDataFromHydrusById(request, id)
     file_type = getFileType(fileData['mime'])
     if len(fileData['service_names_to_statuses_to_tags']) != 0:
-        title = cleanTags(*fileData['service_names_to_statuses_to_tags']['all known tags']['0'])[1]
+        title = cleanTags(*fileData['tags'][settings.ALL_KNOWN_TAGS_CODE]['storage_tags']['0'])[1]
     else:
         title = "Shepbooru"
     height = 0
