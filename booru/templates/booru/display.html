@@ -37,15 +37,35 @@
     </style>
     
     <head>
+        <!-- 
+        https://discord.com/safety/using-webhooks-and-embeds
+        Element     | Description
+        Title       | The text that is placed above the description, usually highlighted. Also directs to a URL, if given.
+        Description | The part of the embed where most of the text is contained.
+        Content     | The message content outside the embed.
+        URL         | The link to the address of the webpage. Mostly used with the thumbnail, icon and author elements in order to link to an image.
+        Color       | Color of your embed’s border, usually in hexadecimal or decimal.
+        Timestamp   | Time that the embed was posted. Located next to the footer.
+        Footer      | Text at the bottom of the embed.
+        Thumbnail   | A medium-sized image in the top right corner of the embed.
+        Image       | A large-sized image located below the “Description” element.
+        Author      | Adds the author block to the embed, always located at the top of the embed.
+        Icon        | An icon-sized image in the top left corner of the embed, next to the “Author” element. This is usually used to represent an Author icon.
+        Fields      | Allows you to add multiple subtitles with additional content underneath them below the main “Title” & “Description” blocks.
+        Inline      | Allows you to put multiple fields in the same row, rather than having one per row.
+        -->
+
         <meta charset="utf-8">
         <meta http-equiv="X-UA-Compatible" content="IE=edge">
         <title>{{title}}</title>
-        <meta name="description" content="Shepbooru - A pet project for sharing Hydrus resources.">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta property="og:title" content="{{title}}" />
+        <meta property="og:image" content="/image/{{id}}" />
         <meta property="og:type" content="website" />
         <meta property="og:url" content="https://shephipster.ddns.net/" />
-        <meta name="viewport" content="width=device-width, initial-scale=1">
-        <meta content="{{title}}" property="og:title">
-        <meta property="og:image" content="/image/{{id}}">
+        <meta property="og:description" content="{{embed_string}}" />
+        <meta name="theme-color" content="#a888c5" />
+        <meta name="twitter:card" content="summary_large_image" />
 
     </head>
     <body>

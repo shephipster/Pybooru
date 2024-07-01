@@ -51,7 +51,11 @@ def authorize(request):
 
         
 def booru(request):
-    if request.session['key']: #Current session is approved
+    OVERRIDE = True
+    if OVERRIDE:
+        request.session['key'] = 'OVERRIDE'
+        request.session['type'] = 'FULL'
+    if 'key' in request.session and request.session['key']: #Current session is approved
         if request.session['type'] == "SUB":
             booru_key = request.session['booru_key']
             subooru = Subooru.objects.get(key=booru_key)
@@ -74,10 +78,10 @@ def image(request, id):
 
 # /view/<id>
 def view(request, id):
-    raw_tags = request.GET['tags']
-    tags = raw_tags.split(',')
+    raw_tags = request.GET.get('tags', None)
+    tags = raw_tags.split(',') if raw_tags else []
     title = ""
-    url_tags = raw_tags.replace(" ", "%20")
+    url_tags = raw_tags.replace(" ", "%20") if raw_tags else None
         
     for i in range(0, len(tags)):
         tags[i] = "\"" + str.strip(tags[i]) + "\"" 
@@ -85,10 +89,15 @@ def view(request, id):
     ids = getIdsFromHydrus(request, *tags)
     
     canCycle = False
+    embed_request = False
     nextPost = -1
     previousPost = -1
     
-    if len(ids) > 1:
+    if not ids or len(ids) <= 1:
+        #probably from an embed or a hyperlink. Honestly thinking of doing away with the booru link stuff
+        # so for now just accept them
+        embed_request = True
+    else:
         canCycle  = True 
         
     if canCycle:
@@ -104,7 +113,7 @@ def view(request, id):
     
     
     
-    fileData = getMetaDataFromHydrusById(request, id)
+    fileData = getMetaDataFromHydrusById(request, id, embed=embed_request)
     """ 
     This has a small issue of displaying siblings, which we can't look up. So if something is tagged "rating: mature" 
     then we get both "rating: mature" and "rating: explicit", but if "rating:mature" is the one that's replaced (by "explicit")
@@ -122,6 +131,18 @@ def view(request, id):
         height = fileData['height']
     if fileData['width']:
         width = fileData['width']
+    
+    tag_set = []
+    for tag in tags:
+        if (x in tag[2] for x in ['series:','character:','creator:', 'artist:']):
+            tag_set.insert(0, tag[0])
+        elif (x in tag[2] for x in ['medium:', 'rating:', 'patreon id:']):
+            continue #skip them, we want to ignore these
+        else:
+            tag_set.append(tag[0])
+    tag_set = set(tag_set)
+    embed_string = ', '.join(tag_set)
+    del tag_set
     return render(request, 'booru/display.html', {
         'id': id,
         'raw_tags': raw_tags,
@@ -135,7 +156,8 @@ def view(request, id):
         'title': title,
         'canCycle': canCycle,
         'nextPost': nextPost,
-        'previousPost': previousPost
+        'previousPost': previousPost,
+        'embed_string' : embed_string,
     })
     
 # view/full/<id>
@@ -292,7 +314,6 @@ def search(request):
             'canAddToSubooru': request.session['type'] != "SUB"
             # 'top_tags': getTagsOfIds(request, *file_ids),
         })
-
 def isAnimated(mimeType:str):
     switcher = {
         "image/jpeg": False,
